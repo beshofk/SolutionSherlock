@@ -1,0 +1,96 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Target framework rationale:
+    The XrmToolBox host application currently ships against .NET Framework 4.8
+    (see the "XrmToolBox" NuGet package, which is what every plugin references
+    for compile-time types). A plugin runs IN-PROCESS inside the host, so it
+    must target the same framework the host runs on - net48 - regardless of
+    which Dataverse SDK client package you separately use elsewhere in your
+    codebase. VS2026 opens and builds this SDK-style net48 project with no
+    changes; VS2026 is fully backward compatible with VS2022-era project
+    types and does not require SLNX or any new project format.
+
+    Do NOT confuse this with the .NET Framework 4.6.2 requirement for
+    server-side Dataverse plugin/workflow-activity assemblies (the kind you
+    register with the Plugin Registration Tool and that execute inside
+    Dataverse itself). That is a completely different artifact from this
+    XrmToolBox client tool and is not relevant here.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net481</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>10.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <Platforms>AnyCPU</Platforms>
+    <OutputType>Library</OutputType>
+    <RootNamespace>BeshoyFanous.XrmToolBox.SolutionSherlock</RootNamespace>
+    <AssemblyName>SolutionSherlock</AssemblyName>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Product>SolutionSherlock for XrmToolBox</Product>
+    <PackageId>BeshoyFanous.XrmToolBox.SolutionSherlock</PackageId>
+    <Authors>Beshoy Fanous</Authors>
+    <Company>Beshoy Fanous</Company>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CrmSdk.CoreAssemblies" Version="9.0.2.60" />
+    <PackageReference Include="Microsoft.CrmSdk.XrmTooling.CoreAssembly" Version="9.1.1.65" />
+    <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Local XrmToolBox references (Copied from XrmToolBox installation folder) -->
+    <Reference Include="System.ComponentModel.Composition" />
+    <Reference Include="XrmToolBox.Extensibility">
+      <HintPath>lib\XrmToolBox.Extensibility.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="McTools.Xrm.Connection">
+      <HintPath>lib\McTools.Xrm.Connection.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="McTools.Xrm.Connection.WinForms">
+      <HintPath>lib\McTools.Xrm.Connection.WinForms.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\Settings.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
+    <Compile Update="SolutionSherlockControl.cs" />
+    <Compile Update="SolutionSherlockControl.Designer.cs">
+      <DependentUpon>SolutionSherlockControl.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
+<ItemGroup>
+  <Reference Include="Microsoft.Toolkit.Uwp.Notifications">
+    <HintPath>lib\Microsoft.Toolkit.Uwp.Notifications.dll</HintPath>
+    <Private>true</Private>
+  </Reference>
+</ItemGroup>
+<ItemGroup>
+  <EmbeddedResource Update="Properties\Resources.resx">
+    <Generator>ResXFileCodeGenerator</Generator>
+    <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+  </EmbeddedResource>
+</ItemGroup>
+<ItemGroup>
+  <None Update="Properties\Settings.settings">
+    <Generator>SettingsSingleFileGenerator</Generator>
+    <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+  </None>
+</ItemGroup>
+<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+  <Exec Command="IF NOT EXIST &quot;C:\Users\Beshoy.Fanous\Downloads\XrmToolboxNewTool\Plugins&quot; mkdir &quot;C:\Users\Beshoy.Fanous\Downloads\XrmToolboxNewTool\Plugins&quot;&#xA;copy /Y &quot;$(TargetPath)&quot; &quot;C:\Users\Beshoy.Fanous\Downloads\XrmToolboxNewTool\Plugins\&quot;" />
+</Target>
+
+</Project>

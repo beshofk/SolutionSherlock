@@ -1,0 +1,495 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.Query;
+using Microsoft.Xrm.Sdk.Messages;
+using Microsoft.Xrm.Sdk.Metadata;
+using Cyberitas.XrmToolBox.SolutionComponentFinder.Helpers;
+using Cyberitas.XrmToolBox.SolutionComponentFinder.Models;
+
+namespace Cyberitas.XrmToolBox.SolutionComponentFinder.Services
+{
+    /// <summary>
+    /// The reverse of SearchEngine: given a specific solution, resolve every
+    /// solutioncomponent row it contains back into human-readable details (Display
+    /// Name, Name, Type, State, Customizable, Description) - the classic Solution
+    /// Explorer "Components" grid, reproduced from the API.
+    ///
+    /// Resolution strategy per component type:
+    /// - Entity, Option Set: filtered out of MetadataResolver's already-cached full
+    ///   lists (ResolveEntities(null) / ResolveGlobalOptionSets(null)) - zero extra
+    ///   server calls beyond whatever warmed those caches.
+    /// - Every other "IsDataRecord" type in ComponentTypeMap (Web Resource, Process,
+    ///   Security Role, Report, templates, Form, View, Chart, ...): a single batched
+    ///   QueryExpression per type, filtering "{table}id IN (ids)" - the standard
+    ///   Dataverse primary-key-column naming convention.
+    /// - systemform (componenttype 60) and workflow (componenttype 29) each host TWO
+    ///   different logical kinds (Form/Dashboard, and Process/Business Rule/Dialog/
+    ///   Action/BPF/Flow respectively) distinguished by an internal column, not by
+    ///   componenttype - handled as special cases so a Dashboard doesn't get
+    ///   mislabeled "Form" or vice versa.
+    /// - Field, Relationship, Key (componenttype 2, 10, 14) appearing as STANDALONE
+    ///   solution components (rather than implicitly included via their parent
+    ///   Entity's "all objects" setting) can't be resolved back to a name without
+    ///   first knowing which entity they belong to, which solutioncomponent doesn't
+    ///   record directly. These are listed with their type and ID but not a resolved
+    ///   name - see README "Solution component roster: known limitations".
+    /// </summary>
+    public class SolutionExplorerService
+    {
+        private readonly IOrganizationService _service;
+        private readonly MetadataResolver _metadataResolver;
+
+        public SolutionExplorerService(IOrganizationService service, MetadataResolver metadataResolver)
+        {
+            _service = service ?? throw new ArgumentNullException(nameof(service));
+            _metadataResolver = metadataResolver ?? throw new ArgumentNullException(nameof(metadataResolver));
+        }
+
+        public List<SolutionComponentDetail> ListComponents(Models.SolutionInfo solution, SearchProgress progress = null)
+        {
+            if (solution == null) throw new ArgumentNullException(nameof(solution));
+            progress = progress ?? SearchProgress.None;
+
+            var results = new List<SolutionComponentDetail>();
+
+            progress.Log($"Loading components for solution '{solution.FriendlyName}'...");
+            var sw = Stopwatch.StartNew();
+            var rows = RetrieveSolutionComponentRows(solution.SolutionId, progress);
+            progress.Log($"Found {rows.Count} component row(s) in {sw.ElapsedMilliseconds}ms.");
+
+            var byCode = rows.GroupBy(r => r.Code).ToDictionary(g => g.Key, g => g.Select(r => r.ObjectId).ToList());
+
+            foreach (var kvp in byCode)
+            {
+                progress.ThrowIfCancelled();
+                var code = kvp.Key;
+                var ids = kvp.Value;
+
+                if (code == 1) { results.AddRange(ResolveEntityComponents(ids, solution)); continue; }
+                if (code == 9) { results.AddRange(ResolveOptionSetComponents(ids, solution)); continue; }
+                if (code == 60) { results.AddRange(ResolveSystemFormComponents(ids, solution, progress)); continue; }
+                if (code == 29) { results.AddRange(ResolveWorkflowComponents(ids, solution, progress)); continue; }
+                if (code == 2) { results.AddRange(ResolveFieldComponents(ids, solution, progress)); continue; }
+                if (code == 10 || code == 14)
+                {
+                    results.AddRange(ResolveUnresolvableMetadataComponents(code, ids, solution));
+                    continue;
+                }
+
+                var typeInfo = ComponentTypeMap.All.Values.FirstOrDefault(t => t.SolutionComponentTypeCode == code && t.IsDataRecord);
+                results.AddRange(typeInfo != null
+                    ? ResolveDataRecordComponents(typeInfo, ids, solution, progress)
+                    : ResolveUnknownComponents(code, ids, solution));
+            }
+
+            progress.Log($"Resolved {results.Count} component detail row(s) total.");
+            return results;
+        }
+
+        private List<(int Code, Guid ObjectId)> RetrieveSolutionComponentRows(Guid solutionId, SearchProgress progress)
+        {
+            var query = new QueryExpression("solutioncomponent")
+            {
+                ColumnSet = new ColumnSet("objectid", "componenttype"),
+                Criteria = new FilterExpression
+                {
+                    Conditions = { new ConditionExpression("solutionid", ConditionOperator.Equal, solutionId) }
+                },
+                PageInfo = new PagingInfo { PageNumber = 1, Count = 5000 }
+            };
+
+            return QueryPaging.RetrieveAllPages(_service, query, progress)
+                .Select(row => (
+                    Code: row.GetAttributeValue<OptionSetValue>("componenttype")?.Value ?? -1,
+                    ObjectId: row.GetAttributeValue<Guid>("objectid")))
+                .Where(r => r.Code >= 0)
+                .ToList();
+        }
+
+        private List<SolutionComponentDetail> ResolveEntityComponents(List<Guid> ids, Models.SolutionInfo solution)
+        {
+            var idSet = new HashSet<Guid>(ids);
+            return _metadataResolver.ResolveEntities(null)
+                .Where(e => e.MetadataId.HasValue && idSet.Contains(e.MetadataId.Value))
+                .Select(e => new SolutionComponentDetail
+                {
+                    DisplayName = e.GetDisplayLabel(),
+                    Name = e.LogicalName,
+                    TypeDisplay = "Entity",
+                    State = solution.IsManaged ? "Managed" : "Unmanaged",
+                    Customizable = (e.IsCustomizable?.Value ?? true) ? "True" : "False",
+                    Description = e.Description?.UserLocalizedLabel?.Label,
+                    // An Entity component is its own parent for grouping purposes -
+                    // this is what makes its own row anchor the top of its entity's
+                    // group alongside its sub-components (Fields, Forms, ...).
+                    ParentEntityLogicalName = e.LogicalName,
+                    ParentEntityDisplayName = e.GetDisplayLabel(),
+                    ComponentTypeCode = 1,
+                    ObjectId = e.MetadataId.Value
+                }).ToList();
+        }
+
+        private List<SolutionComponentDetail> ResolveOptionSetComponents(List<Guid> ids, Models.SolutionInfo solution)
+        {
+            var idSet = new HashSet<Guid>(ids);
+            return _metadataResolver.ResolveGlobalOptionSets(null)
+                .Where(o => o.MetadataId.HasValue && idSet.Contains(o.MetadataId.Value))
+                .Select(o => new SolutionComponentDetail
+                {
+                    DisplayName = o.DisplayName?.UserLocalizedLabel?.Label ?? o.Name,
+                    Name = o.Name,
+                    TypeDisplay = "Option Set",
+                    State = solution.IsManaged ? "Managed" : "Unmanaged",
+                    Customizable = "—",
+                    Description = o.Description?.UserLocalizedLabel?.Label,
+                    ComponentTypeCode = 9,
+                    ObjectId = o.MetadataId.Value
+                }).ToList();
+        }
+
+        /// <summary>
+        /// systemform hosts both Forms and Dashboards, distinguished by the "type"
+        /// column rather than componenttype - type == 0 is the long-standing
+        /// convention for Dashboard (see README for the same caveat noted where
+        /// Dashboard is registered as a main search type).
+        /// </summary>
+        private List<SolutionComponentDetail> ResolveSystemFormComponents(List<Guid> ids, Models.SolutionInfo solution, SearchProgress progress)
+        {
+            var results = new List<SolutionComponentDetail>();
+
+            // Resolve the primary id attribute for systemform via metadata (do once per method)
+            string idAttribute = "formid"; // fallback
+            // Also attempt to learn which attributes actually exist on the entity so
+            // we don't request non-existent attributes (which causes RetrieveMultiple
+            // to throw in some orgs).
+            HashSet<string> availableAttrs = null;
+            try
+            {
+                var retrieveReq = new RetrieveEntityRequest
+                {
+                    LogicalName = "systemform",
+                    EntityFilters = EntityFilters.Entity | EntityFilters.Attributes
+                };
+                var retrieveResp = (RetrieveEntityResponse)_service.Execute(retrieveReq);
+                if (retrieveResp?.EntityMetadata != null)
+                {
+                    if (!string.IsNullOrEmpty(retrieveResp.EntityMetadata.PrimaryIdAttribute))
+                        idAttribute = retrieveResp.EntityMetadata.PrimaryIdAttribute;
+
+                    availableAttrs = new HashSet<string>(
+                        retrieveResp.EntityMetadata.Attributes?.Select(a => a.LogicalName) ?? Enumerable.Empty<string>(),
+                        StringComparer.OrdinalIgnoreCase);
+                }
+            }
+            catch
+            {
+                // Swallow metadata retrieval errors and fall back to the conventional name
+                // and default attribute behaviour below.
+            }
+
+            foreach (var batch in QueryPaging.Chunk(ids))
+            {
+                progress.ThrowIfCancelled();
+
+                // Build a ColumnSet that only includes attributes known to exist in
+                // the target org. If metadata wasn't available, fall back to the
+                // original desired set (this may fail in orgs that don't have the
+                // attributes, but metadata retrieval failing should be rare).
+                var desiredAttrs = new[] { "name", "type", "objecttypecode", "createdon", "modifiedon" };
+                ColumnSet columnSet;
+                if (availableAttrs != null)
+                {
+                    var cols = desiredAttrs.Where(a => availableAttrs.Contains(a)).ToArray();
+                    if (cols.Length == 0) cols = new[] { "name" };
+                    columnSet = new ColumnSet(cols);
+                }
+                else
+                {
+                    columnSet = new ColumnSet(desiredAttrs);
+                }
+
+                var query = new QueryExpression("systemform")
+                {
+                    ColumnSet = columnSet,
+                    Criteria = new FilterExpression
+                    {
+                        Conditions = { new ConditionExpression(idAttribute, ConditionOperator.In, batch.Cast<object>().ToArray()) }
+                    },
+                    PageInfo = new PagingInfo { PageNumber = 1, Count = 5000 }
+                };
+
+                foreach (var record in QueryPaging.RetrieveAllPages(_service, query, progress))
+                {
+                    var name = record.GetAttributeValue<string>("name");
+                    var formType = record.GetAttributeValue<OptionSetValue>("type")?.Value;
+                    // Only Forms are meaningfully entity-scoped for grouping purposes -
+                    // most Dashboards won't have objecttypecode set at all, in which
+                    // case this naturally stays null and the row falls back to
+                    // grouping by TypeDisplay ("Dashboard"), same as before.
+                    var parentEntityLogicalName = record.GetAttributeValue<string>("objecttypecode");
+
+                    results.Add(new SolutionComponentDetail
+                    {
+                        DisplayName = name,
+                        Name = name,
+                        TypeDisplay = formType == 0 ? "Dashboard" : "Form",
+                        State = solution.IsManaged ? "Managed" : "Unmanaged",
+                        Customizable = "—",
+                        Description = null,
+                        CreatedOn = record.GetAttributeValue<DateTime?>("createdon"),
+                        ModifiedOn = record.GetAttributeValue<DateTime?>("modifiedon"),
+                        ParentEntityLogicalName = parentEntityLogicalName,
+                        ParentEntityDisplayName = ResolveEntityDisplayName(parentEntityLogicalName),
+                        ComponentTypeCode = 60,
+                        ObjectId = record.Id
+                    });
+                }
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// workflow hosts Process (Workflow/Dialog/Action/Business Process Flow/Modern
+        /// Flow/Desktop Flow) and Business Rule, distinguished by the "category"
+        /// column - same standard SDK OptionSets.WorkflowCategory values used by
+        /// ProcessCategories.
+        /// </summary>
+        private List<SolutionComponentDetail> ResolveWorkflowComponents(List<Guid> ids, Models.SolutionInfo solution, SearchProgress progress)
+        {
+            var results = new List<SolutionComponentDetail>();
+
+            foreach (var batch in QueryPaging.Chunk(ids))
+            {
+                progress.ThrowIfCancelled();
+
+                var query = new QueryExpression("workflow")
+                {
+                    ColumnSet = new ColumnSet("name", "category", "description", "primaryentity", "createdon", "modifiedon"),
+                    Criteria = new FilterExpression
+                    {
+                        Conditions = { new ConditionExpression("workflowid", ConditionOperator.In, batch.Cast<object>().ToArray()) }
+                    },
+                    PageInfo = new PagingInfo { PageNumber = 1, Count = 5000 }
+                };
+
+                foreach (var record in QueryPaging.RetrieveAllPages(_service, query, progress))
+                {
+                    var name = record.GetAttributeValue<string>("name");
+                    var category = record.GetAttributeValue<OptionSetValue>("category")?.Value;
+                    var isBusinessRule = category == 2;
+
+                    // Only Business Rule groups by parent entity - it's the one
+                    // ComponentTypeMap.SubTypesByMain[Entity] member that lives in this
+                    // table. Regular Process rows (category != 2) keep grouping by
+                    // TypeDisplay ("Process (Workflow)", etc.) as before - Process is a
+                    // main-level type, not an entity sub-component, even though most
+                    // processes do have a primaryentity.
+                    var parentEntityLogicalName = isBusinessRule ? record.GetAttributeValue<string>("primaryentity") : null;
+
+                    results.Add(new SolutionComponentDetail
+                    {
+                        DisplayName = name,
+                        Name = name,
+                        TypeDisplay = LabelForWorkflowCategory(category),
+                        State = solution.IsManaged ? "Managed" : "Unmanaged",
+                        Customizable = "—",
+                        Description = record.GetAttributeValue<string>("description"),
+                        CreatedOn = record.GetAttributeValue<DateTime?>("createdon"),
+                        ModifiedOn = record.GetAttributeValue<DateTime?>("modifiedon"),
+                        ParentEntityLogicalName = parentEntityLogicalName,
+                        ParentEntityDisplayName = ResolveEntityDisplayName(parentEntityLogicalName),
+                        ComponentTypeCode = 29,
+                        ObjectId = record.Id
+                    });
+                }
+            }
+
+            return results;
+        }
+
+        private static string LabelForWorkflowCategory(int? category)
+        {
+            switch (category)
+            {
+                case 0: return "Process (Workflow)";
+                case 1: return "Process (Dialog)";
+                case 2: return "Business Rule";
+                case 3: return "Process (Action)";
+                case 4: return "Process (Business Process Flow)";
+                case 5: return "Process (Modern Flow)";
+                case 6: return "Process (Desktop Flow)";
+                default: return "Process";
+            }
+        }
+
+        /// <summary>
+        /// Generic path for every other IsDataRecord component type - one batched
+        /// query per type, filtering on the standard "{table}id" primary key column.
+        /// </summary>
+        private List<SolutionComponentDetail> ResolveDataRecordComponents(
+            ComponentTypeInfo typeInfo, List<Guid> ids, Models.SolutionInfo solution, SearchProgress progress)
+        {
+            var results = new List<SolutionComponentDetail>();
+            var idAttribute = typeInfo.EntityLogicalName + "id";
+
+            // createdon/modifiedon are standard columns on every Dataverse table
+            // (out-of-box or custom), so unlike PrimaryNameAttribute/DescriptionAttribute
+            // these don't need a per-type opt-in - safe to request unconditionally.
+            var columns = new List<string> { typeInfo.PrimaryNameAttribute, "createdon", "modifiedon" };
+            if (!string.IsNullOrEmpty(typeInfo.DescriptionAttribute))
+                columns.Add(typeInfo.DescriptionAttribute);
+            if (!string.IsNullOrEmpty(typeInfo.ParentEntityAttribute))
+                columns.Add(typeInfo.ParentEntityAttribute);
+
+            foreach (var batch in QueryPaging.Chunk(ids))
+            {
+                progress.ThrowIfCancelled();
+
+                var query = new QueryExpression(typeInfo.EntityLogicalName)
+                {
+                    ColumnSet = new ColumnSet(columns.ToArray()),
+                    Criteria = new FilterExpression
+                    {
+                        Conditions = { new ConditionExpression(idAttribute, ConditionOperator.In, batch.Cast<object>().ToArray()) }
+                    },
+                    PageInfo = new PagingInfo { PageNumber = 1, Count = 5000 }
+                };
+
+                foreach (var record in QueryPaging.RetrieveAllPages(_service, query, progress))
+                {
+                    var name = record.GetAttributeValue<string>(typeInfo.PrimaryNameAttribute);
+                    var description = !string.IsNullOrEmpty(typeInfo.DescriptionAttribute)
+                        ? record.GetAttributeValue<string>(typeInfo.DescriptionAttribute)
+                        : null;
+                    var parentEntityLogicalName = !string.IsNullOrEmpty(typeInfo.ParentEntityAttribute)
+                        ? record.GetAttributeValue<string>(typeInfo.ParentEntityAttribute)
+                        : null;
+
+                    results.Add(new SolutionComponentDetail
+                    {
+                        DisplayName = name,
+                        Name = name,
+                        TypeDisplay = typeInfo.DisplayName,
+                        State = solution.IsManaged ? "Managed" : "Unmanaged",
+                        Customizable = "—",
+                        Description = description,
+                        CreatedOn = record.GetAttributeValue<DateTime?>("createdon"),
+                        ModifiedOn = record.GetAttributeValue<DateTime?>("modifiedon"),
+                        ParentEntityLogicalName = parentEntityLogicalName,
+                        ParentEntityDisplayName = ResolveEntityDisplayName(parentEntityLogicalName),
+                        ComponentTypeCode = typeInfo.SolutionComponentTypeCode,
+                        ObjectId = record.Id
+                    });
+                }
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// <summary>
+        /// Resolves standalone Field components (added to the solution individually,
+        /// rather than implicitly via their parent Entity's "all objects" setting) to
+        /// their real display name, logical name, and parent entity - via
+        /// MetadataResolver.ResolveAttributesByMetadataId, which searches across every
+        /// entity in the org for matching AttributeMetadata in a bounded number of
+        /// calls. Once resolved, these group under their parent entity exactly like
+        /// Forms/Views/Charts/Business Rules do.
+        ///
+        /// Created On / Modified On stay null here - unlike Forms/Views/Web Resources
+        /// (ordinary table rows with standard audit columns), attribute metadata has
+        /// no createdon/modifiedon exposed via the metadata API. This is a genuine
+        /// data-availability limit, not an oversight - the UI shows "—" for these two
+        /// fields on Field rows for that reason.
+        /// </summary>
+        private List<SolutionComponentDetail> ResolveFieldComponents(List<Guid> ids, Models.SolutionInfo solution, SearchProgress progress)
+        {
+            var attributeComponentCode = ComponentTypeMap.Get(ComponentTypeKind.Attribute).SolutionComponentTypeCode;
+            var resolved = _metadataResolver.ResolveAttributesByMetadataId(ids, progress);
+
+            var results = resolved.Select(r => new SolutionComponentDetail
+            {
+                DisplayName = r.Attribute.GetDisplayLabel(),
+                Name = r.Attribute.LogicalName,
+                TypeDisplay = "Field",
+                State = solution.IsManaged ? "Managed" : "Unmanaged",
+                Customizable = (r.Attribute.IsCustomizable?.Value ?? true) ? "True" : "False",
+                Description = r.Attribute.Description?.UserLocalizedLabel?.Label,
+                ParentEntityLogicalName = r.ParentEntityLogicalName,
+                ParentEntityDisplayName = ResolveEntityDisplayName(r.ParentEntityLogicalName),
+                ComponentTypeCode = attributeComponentCode,
+                ObjectId = r.Attribute.MetadataId ?? Guid.Empty
+            }).ToList();
+
+            // Extremely rare, but guard against it anyway: an id RetrieveMetadataChangesRequest
+            // didn't return anything for (e.g. the field was deleted after the solution
+            // snapshot was taken) falls back to the same honest placeholder used for
+            // Relationship/Key, rather than silently vanishing from the count.
+            var resolvedIds = new HashSet<Guid>(resolved.Where(r => r.Attribute.MetadataId.HasValue).Select(r => r.Attribute.MetadataId.Value));
+            var missing = ids.Where(id => !resolvedIds.Contains(id)).ToList();
+            if (missing.Count > 0)
+                results.AddRange(BuildUnresolvedPlaceholders(attributeComponentCode, "Field", missing, solution));
+
+            return results;
+        }
+
+        /// <summary>
+        /// Relationship and Key components added to the solution as standalone
+        /// entries can't be resolved to a name without already knowing which entity
+        /// they belong to, and solutioncomponent doesn't record that. Unlike Field
+        /// (see ResolveFieldComponents), a verified bulk cross-entity lookup approach
+        /// for these two hasn't been confirmed, so they're shown with type + ID rather
+        /// than a guessed name - the roster's total count still matches what Solution
+        /// Explorer would show, just without full detail for these two kinds.
+        /// </summary>
+        private List<SolutionComponentDetail> ResolveUnresolvableMetadataComponents(int code, List<Guid> ids, Models.SolutionInfo solution)
+        {
+            var typeLabel = code == 10 ? "Relationship" : "Key";
+            return BuildUnresolvedPlaceholders(code, typeLabel, ids, solution);
+        }
+
+        private static List<SolutionComponentDetail> BuildUnresolvedPlaceholders(int code, string typeLabel, List<Guid> ids, Models.SolutionInfo solution)
+        {
+            return ids.Select(id => new SolutionComponentDetail
+            {
+                DisplayName = $"({typeLabel} — search by parent Entity to see details)",
+                Name = id.ToString(),
+                TypeDisplay = typeLabel,
+                State = solution.IsManaged ? "Managed" : "Unmanaged",
+                Customizable = "—",
+                Description = null,
+                ComponentTypeCode = code,
+                ObjectId = id
+            }).ToList();
+        }
+
+        private List<SolutionComponentDetail> ResolveUnknownComponents(int code, List<Guid> ids, Models.SolutionInfo solution)
+        {
+            return ids.Select(id => new SolutionComponentDetail
+            {
+                DisplayName = $"(Unrecognized component type {code})",
+                Name = id.ToString(),
+                TypeDisplay = $"Type {code}",
+                State = solution.IsManaged ? "Managed" : "Unmanaged",
+                Customizable = "—",
+                Description = null,
+                ComponentTypeCode = code,
+                ObjectId = id
+            }).ToList();
+        }
+
+        /// <summary>Looks up an entity's display label by logical name from MetadataResolver's already-cached entity list - no extra server call.</summary>
+        private string ResolveEntityDisplayName(string logicalName)
+        {
+            if (string.IsNullOrEmpty(logicalName)) return null;
+
+            return _metadataResolver.ResolveEntities(null)
+                .FirstOrDefault(e => string.Equals(e.LogicalName, logicalName, StringComparison.OrdinalIgnoreCase))
+                ?.GetDisplayLabel();
+        }
+    }
+}
