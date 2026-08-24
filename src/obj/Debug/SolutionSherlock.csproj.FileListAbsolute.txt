@@ -28,6 +28,7 @@ D:\LinkDev\Github Repo\SolutionSherlock\src\obj\Debug\BeshoyFanous.XrmToolBox.So
 D:\LinkDev\Github Repo\SolutionSherlock\src\obj\Debug\SolutionSherlock.csproj.GenerateResource.cache
 D:\LinkDev\Github Repo\SolutionSherlock\src\obj\Debug\SolutionSherlock.GeneratedMSBuildEditorConfig.editorconfig
 D:\LinkDev\Github Repo\SolutionSherlock\src\obj\Debug\SolutionSherlock.csproj.CoreCompileInputs.cache
+D:\LinkDev\Github Repo\SolutionSherlock\src\obj\Debug\SolutionSherlock.sourcelink.json
 D:\LinkDev\Github Repo\SolutionSherlock\src\obj\Debug\Solution.C5ADE3EF.Up2Date
 D:\LinkDev\Github Repo\SolutionSherlock\src\obj\Debug\SolutionSherlock.dll
 D:\LinkDev\Github Repo\SolutionSherlock\src\obj\Debug\SolutionSherlock.pdb

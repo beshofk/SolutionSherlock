@@ -1,7 +1,12 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "D:\\LinkDev\\Github Repo\\SolutionSherlock\\",
-  "Documents": [],
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{B7B5E6E1-9C2E-4F2C-9A9E-9B6A2C3D4E5F}|src\\SolutionSherlock.csproj|d:\\linkdev\\github repo\\solutionsherlock\\src\\solutionsherlockplugin.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B7B5E6E1-9C2E-4F2C-9A9E-9B6A2C3D4E5F}|src\\SolutionSherlock.csproj|solutionrelative:src\\solutionsherlockplugin.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
@@ -9,7 +14,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": -1,
+          "SelectedChildIndex": 6,
           "Children": [
             {
               "$type": "Bookmark",
@@ -34,6 +39,19 @@
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{80c411e8-fd5e-4b16-914b-0d9d84172cc1}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "SolutionSherlockPlugin.cs",
+              "DocumentMoniker": "D:\\LinkDev\\Github Repo\\SolutionSherlock\\src\\SolutionSherlockPlugin.cs",
+              "RelativeDocumentMoniker": "src\\SolutionSherlockPlugin.cs",
+              "ToolTip": "D:\\LinkDev\\Github Repo\\SolutionSherlock\\src\\SolutionSherlockPlugin.cs",
+              "RelativeToolTip": "src\\SolutionSherlockPlugin.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAA1eQEAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-08-18T00:51:50.839Z",
+              "EditorCaption": ""
             }
           ]
         }
