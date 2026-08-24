@@ -813,17 +813,6 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             });
         }
 
-        /// <summary>
-        /// Groups components for display: entity-scoped rows (Field, Form, View,
-        /// Chart, Business Rule, and the Entity component itself) group under their
-        /// parent entity's display name; everything else groups by its own component
-        /// type, same as before this change. Within each group, the Entity's own row
-        /// (if present) sorts first, then everything else alphabetically by
-        /// DisplayName - this ordering is established once here (not by the caller),
-        /// and LINQ's GroupBy is documented to preserve it, so grouping never re-sorts
-        /// on top of it. A group with zero matching components never appears here in
-        /// the first place, since groups are derived only from rows that exist.
-        /// </summary>
         /// <summary>Synthetic top-level group key for the "Entity" super-group - namespaced so it can never collide with a real component type name.</summary>
         private const string EntitiesTopGroupKey = "__Entities__";
 
@@ -1133,15 +1122,16 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             value.HasValue ? value.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "—";
 
         /// <summary>
-        /// Loads (or reloads) the full solution list. Uses genuine async/await via
-        /// BrowseSolutionsViewModel.LoadSolutionsAsync rather than WorkAsync, per the
-        /// explicit LoadSolutionsAsync() requirement - see the class-level threading
-        /// note for why this coexists with WorkAsync elsewhere in this control.
-        /// BeginAsyncOperation/EndAsyncOperation are still reused here (Load All
-        /// Solutions IS genuinely cancellable - it's a paginated query with many
-        /// checkpoints, same as Search), so Abort works for this operation.
+        /// Loads (or reloads) the full solution list. Runs on XrmToolBox's
+        /// WorkAsync/BackgroundWorker pipeline (same as Search and View
+        /// Components) so it is cancellable via Abort and its progress lines
+        /// stream to the activity log. BrowseSolutionsViewModel.LoadSolutionsAsync
+        /// is still async internally; here it is bridged onto the WorkAsync
+        /// worker thread with GetAwaiter().GetResult() so this handler's
+        /// lifecycle stays under the WorkAsync PostWorkCallBack contract used
+        /// by every other cancellable operation in this control.
         /// </summary>
-        private async void BtnLoadAllSolutions_Click(object sender, EventArgs e)
+        private void BtnLoadAllSolutions_Click(object sender, EventArgs e)
         {
             if (Service == null)
             {
@@ -1152,94 +1142,62 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
 
             var cancellationToken = BeginAsyncOperation("Loading all solutions...");
 
-            // Progress<T> captures the UI thread's SynchronizationContext at
-            // construction time (right now, since we're on the UI thread inside this
-            // event handler) - its Report() calls are guaranteed to marshal back to
-            // this thread even when invoked from LoadSolutionsAsync's background
-            // (Task.Run) thread. This is what lets SearchProgress.Log safely reach
-            // AppendLog (a UI control update) without any manual Invoke/BeginInvoke.
-
-
-            System.IProgress<string> uiProgress = new System.Progress<string>(AppendLog);
-            var progress = new SearchProgress(cancellationToken, message => uiProgress.Report(message));
-
-            //try
-            //{
-            //    await _browseViewModel.LoadSolutionsAsync(progress, cancellationToken);
-            //    RenderSolutionsPage();
-            //}
-            try
+            // Matches the WorkAsync lifecycle used by BtnSearch_Click and
+            // BtnViewComponents_Click: no outer try/catch/finally, because
+            // WorkAsync dispatches to a BackgroundWorker and returns
+            // immediately - any surrounding finally would call
+            // EndAsyncOperation() before the work completes and re-enable
+            // the action buttons mid-flight. PostWorkCallBack owns
+            // completion, cancellation and error handling for this flow.
+            WorkAsync(new WorkAsyncInfo
             {
-                WorkAsync(new WorkAsyncInfo
+                Message = "Loading solutions...",
+                Work = (worker, args) =>
                 {
-                    Message = "Loading solutions...",
-                    Work = (worker, args) =>
+                    var progress = new SearchProgress(
+                        cancellationToken,
+                        message => worker.ReportProgress(0, message));
+
+                    try
                     {
-                        var progress = new SearchProgress(
-                            cancellationToken,
-                            message => worker.ReportProgress(0, message));
-
-                        try
-                        {
-                            _browseViewModel.LoadSolutionsAsync(progress, cancellationToken)
-                                .GetAwaiter()
-                                .GetResult();
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            args.Cancel = true;
-                        }
-                    },
-                    ProgressChanged = args =>
-                    {
-                        AppendLog(args.UserState as string);
-                    },
-                    PostWorkCallBack = args =>
-                    {
-                        EndAsyncOperation();
-
-                        if (args.Cancelled)
-                        {
-                            AppendLog("Solution load cancelled.");
-                            return;
-                        }
-
-                        if (args.Error != null)
-                        {
-                            AppendLog($"Solution load failed: {args.Error.Message}");
-
-                            MessageBox.Show(
-                                this,
-                                "Could not load solutions: " + args.Error.Message,
-                                "Load failed",
-                                MessageBoxButtons.OK,
-                                MessageBoxIcon.Error);
-
-                            LogError(args.Error.ToString());
-                            return;
-                        }
-
-                        RenderSolutionsPage();
+                        // LoadSolutionsAsync's own Task.Run body is what actually
+                        // frees the UI thread; blocking here on GetResult() only
+                        // holds the BackgroundWorker's thread, which is what
+                        // WorkAsync explicitly provides for synchronous SDK work.
+                        _browseViewModel.LoadSolutionsAsync(progress, cancellationToken)
+                            .GetAwaiter()
+                            .GetResult();
                     }
-                });
-            }
-            catch (OperationCanceledException)
-            {
-                lblPageIndicator.Text = "Solution load cancelled.";
-                AppendLog($"Solution load cancelled after {_operationStopwatch.ElapsedMilliseconds}ms.");
-            }
-            catch (Exception ex)
-            {
-                lblPageIndicator.Text = "Failed to load solutions.";
-                AppendLog($"Solution load failed after {_operationStopwatch.ElapsedMilliseconds}ms: {ex.Message}");
-                MessageBox.Show(this, "Could not load solutions: " + ex.Message, "Load failed",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-                LogError(ex.ToString());
-            }
-            finally
-            {
-                EndAsyncOperation();
-            }
+                    catch (OperationCanceledException)
+                    {
+                        args.Cancel = true;
+                    }
+                },
+                ProgressChanged = args => AppendLog(args.UserState as string),
+                PostWorkCallBack = args =>
+                {
+                    EndAsyncOperation();
+
+                    if (args.Cancelled)
+                    {
+                        lblPageIndicator.Text = "Solution load cancelled.";
+                        AppendLog($"Solution load cancelled after {_operationStopwatch.ElapsedMilliseconds}ms.");
+                        return;
+                    }
+
+                    if (args.Error != null)
+                    {
+                        lblPageIndicator.Text = "Failed to load solutions.";
+                        AppendLog($"Solution load failed after {_operationStopwatch.ElapsedMilliseconds}ms: {args.Error.Message}");
+                        MessageBox.Show(this, "Could not load solutions: " + args.Error.Message,
+                            "Load failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        LogError(args.Error.ToString());
+                        return;
+                    }
+
+                    RenderSolutionsPage();
+                }
+            });
         }
 
         /// <summary>Renders the current 20-row page (sorted per BrowseSolutionsViewModel's current sort state).</summary>
@@ -1538,7 +1496,6 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             // Same Progress<T> pattern as Load All Solutions: captures this UI
             // thread's context now, so .Report() calls from SolutionExportService's
             // Task.Run background thread land back here safely.
-// after
             var uiProgress = new System.Progress<ExportStageProgress>(p => lblExportStatus.Text = p.Message);
 
             try

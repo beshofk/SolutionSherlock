@@ -673,7 +673,6 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock.Services
         }
 
         /// <summary>
-        /// <summary>
         /// Resolves standalone Field components (added to the solution individually,
         /// rather than implicitly via their parent Entity's "all objects" setting) to
         /// their real display name, logical name, and parent entity - via

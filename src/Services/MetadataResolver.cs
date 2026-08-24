@@ -408,6 +408,8 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock.Services
         }
 
 
+        /// <summary>
+        /// Retrieves entity keys (alternate keys) for a single entity and filters by
         /// name/label. Uses EntityFilters.All rather than a narrower filter because
         /// the SDK doesn't expose a dedicated "Keys only" filter bit reliably across
         /// versions - correctness over the small extra payload.
