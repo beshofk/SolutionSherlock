@@ -7,7 +7,10 @@
     <authors>Beshoy Fanous</authors>
     <owners>Beshoy Fanous</owners>
     <projectUrl>https://github.com/beshofk/SolutionSherlock</projectUrl>
+    <!-- iconUrl kept alongside icon: XrmToolBox's Tool Library reads iconUrl directly, and nuget.org falls back to it for older clients -->
     <iconUrl>https://raw.githubusercontent.com/beshofk/SolutionSherlock/main/Assets/SolutionSherlock-logo-dark.png</iconUrl>
+    <icon>icon.png</icon>
+    <readme>README.md</readme>
     <license type="expression">MIT</license>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>SolutionSherlock is an XrmToolBox tool for investigating and exploring Microsoft Dataverse / Dynamics 365 solutions and their components: search which solutions contain a given entity/field, browse a solution's full component roster grouped by type, view component details, and export a solution (managed/unmanaged, with optional system settings) as a deployable package.</description>
@@ -35,5 +38,7 @@
     <file src="src\bin\Release\System.Text.Json.dll" target="lib\net481\Plugins" />
     <file src="src\bin\Release\System.Threading.Tasks.Extensions.dll" target="lib\net481\Plugins" />
     <file src="src\bin\Release\System.ValueTuple.dll" target="lib\net481\Plugins" />
+    <file src="Assets\SolutionSherlock-icon-128.png" target="icon.png" />
+    <file src="README.md" target="" />
   </files>
 </package>
