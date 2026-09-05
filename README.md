@@ -1,6 +1,6 @@
 # SolutionSherlock — XrmToolBox Plugin
 
-![SolutionSherlock](Assets/SolutionSherlock-logo-dark.png)
+![SolutionSherlock](https://raw.githubusercontent.com/beshofk/SolutionSherlock/main/Assets/SolutionSherlock-logo-dark.png)
 
 **SolutionSherlock** is an XrmToolBox plugin for investigating and exploring
 Microsoft Dataverse / Dynamics 365 solutions and their components.

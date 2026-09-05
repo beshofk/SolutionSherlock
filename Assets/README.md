@@ -3,7 +3,7 @@
 Place the official `SolutionSherlock` logo here as:
 
 ```
-https://github.com/beshofk/SolutionSherlock/blob/main/Assets/SolutionSherlock-logo-dark.png
+https://raw.githubusercontent.com/beshofk/SolutionSherlock/main/Assets/SolutionSherlock-logo-dark.png
 ```
 
 This is the dark-mode logo (detective silhouette, magnifying glass, Dataverse
