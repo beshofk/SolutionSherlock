@@ -57,6 +57,26 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock.ViewModels
         /// <summary>Remembered for the lifetime of this view model instance (i.e. this connection) - not persisted across XrmToolBox restarts. See README for how to extend this to a persisted setting.</summary>
         public string LastExportFolder { get; private set; }
 
+        /// <summary>
+        /// Gate for the advanced system-settings selection. When false (the
+        /// default), <see cref="SystemSettings"/> is ignored by the export - every
+        /// individual system-setting flag is treated as unchecked no matter what
+        /// the user previously configured. Toggled by the <c>Include System
+        /// Settings (Advanced)</c> checkbox on the Browse Solutions tab.
+        /// </summary>
+        public bool IncludeSystemSettings { get; set; }
+
+        /// <summary>
+        /// The nine per-setting checkboxes' state from the last time the user
+        /// clicked Apply in the Configure... dialog. Retained across dialog
+        /// opens (and across toggles of <see cref="IncludeSystemSettings"/>) as a UX
+        /// convenience so the user doesn't lose their picks when they briefly
+        /// uncheck Include System Settings. This selection ONLY affects the export
+        /// when <see cref="IncludeSystemSettings"/> is also true - see
+        /// <see cref="BuildExportOptions"/>.
+        /// </summary>
+        public SystemSettingsSelection SystemSettings { get; } = new SystemSettingsSelection();
+
         public async Task LoadSolutionsAsync(SearchProgress progress, CancellationToken cancellationToken)
         {
             await _solutionRepository.LoadSolutionsAsync(progress, cancellationToken).ConfigureAwait(false);
@@ -132,8 +152,12 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock.ViewModels
         /// <summary>
         /// Validates, exports, and saves SelectedSolution to destinationPath.
         /// Throws InvalidOperationException for validation failures (no solution
-        /// selected, destination folder missing) so the caller's single catch block
-        /// can present a readable message the same way it does for SDK/IO failures.
+        /// selected, destination folder missing, or Include System Settings ticked
+        /// without any individual setting picked) so the caller's single catch
+        /// block can present a readable message the same way it does for SDK/IO
+        /// failures. The options passed to the export service come from
+        /// <see cref="BuildExportOptions"/>, which is the single place that gates
+        /// <see cref="SystemSettings"/> behind <see cref="IncludeSystemSettings"/>.
         /// </summary>
         public async Task<ExportResult> ExportSelectedSolutionAsync(
             string destinationPath,
@@ -151,8 +175,13 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock.ViewModels
             if (string.IsNullOrEmpty(directory) || !_fileSystemService.DirectoryExists(directory))
                 throw new InvalidOperationException($"The destination folder does not exist: {directory}");
 
+            if (IncludeSystemSettings && !SystemSettings.IsAnySelected)
+                throw new InvalidOperationException(
+                    "Include System Settings is enabled but no individual setting is selected. " +
+                    "Open Configure... and pick at least one setting, or uncheck Include System Settings.");
+
             var sw = Stopwatch.StartNew();
-            var options = new ExportSolutionOptions { Managed = exportManaged };
+            var options = BuildExportOptions(exportManaged);
 
             var fileBytes = await _exportService
                 .ExportSolutionAsync(SelectedSolution.UniqueName, options, progress, cancellationToken)
@@ -172,6 +201,20 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock.ViewModels
                 FileSizeBytes = fileBytes.LongLength,
                 Duration = sw.Elapsed
             };
+        }
+
+        /// <summary>
+        /// Builds the ExportSolutionOptions payload actually sent to the SDK.
+        /// <see cref="IncludeSystemSettings"/> is the ONLY gate here: when false,
+        /// <see cref="SystemSettings"/> is not read at all, so stale selections
+        /// cannot leak into the request.
+        /// </summary>
+        internal ExportSolutionOptions BuildExportOptions(bool exportManaged)
+        {
+            var options = new ExportSolutionOptions { Managed = exportManaged };
+            if (IncludeSystemSettings)
+                options.ApplySystemSettings(SystemSettings);
+            return options;
         }
 
         /// <summary>Suggested export filename: SolutionUniqueName_Version.zip.</summary>

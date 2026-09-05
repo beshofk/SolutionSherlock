@@ -8,6 +8,126 @@ called out under "Not implemented (recorded only)".
 
 ---
 
+## [Unreleased] — Advanced system-settings pass 2026-08-25
+
+Added an **Include System Settings (Advanced)** checkbox and a
+**Configure...** dialog to the Browse Solutions tab's export flow.
+Preserves the existing **Export as Managed** checkbox exactly (same
+name, same unchecked default, same behavior). No public API on the
+services was renamed or removed.
+
+### Added
+
+- **New `SystemSettingsSelection` model
+  ([src/Models/SystemSettingsSelection.cs](src/Models/SystemSettingsSelection.cs))** —
+  nine boolean properties (Calendar, Customization, EmailTracking,
+  General, Marketing, OutlookSynchronization, RelationshipRoles,
+  IsvConfig, Sales), plus `SelectAll` / `ClearAll` / `IsAnySelected` /
+  `Clone` and a static `Definitions` array pairing each setting with a
+  display label + strongly-typed getter/setter. This is the single
+  source of truth for the nine supported settings — the dialog and the
+  options mapping both enumerate it.
+- **`ExportSolutionOptions.ApplySystemSettings(SystemSettingsSelection)`**
+  ([src/Models/ExportSolutionOptions.cs](src/Models/ExportSolutionOptions.cs)) —
+  copies the nine gated flags from a selection onto the options
+  instance. Callers only invoke this when
+  `IncludeSystemSettings == true` so a stale selection cannot leak
+  into the SDK request.
+- **`BrowseSolutionsViewModel.IncludeSystemSettings` + `SystemSettings`
+  state** ([src/ViewModels/BrowseSolutionsViewModel.cs](src/ViewModels/BrowseSolutionsViewModel.cs)) —
+  persistent per-connection state driving the export payload.
+- **`BrowseSolutionsViewModel.BuildExportOptions(bool exportManaged)`** —
+  internal single gate that decides whether `ApplySystemSettings` is
+  called (only when `IncludeSystemSettings == true`).
+- **Validation**: `ExportSelectedSolutionAsync` now throws
+  `InvalidOperationException("Include System Settings is enabled but
+  no individual setting is selected...")` when the user ticks Include
+  System Settings but has nothing selected. The existing catch block
+  renders the message via `IDialogService.ShowError` — no invalid
+  request is sent to Dataverse.
+- **`SystemSettingsDialog`
+  ([src/SystemSettingsDialog.cs](src/SystemSettingsDialog.cs))** — new
+  modal WinForms `Form` with nine checkboxes (bound via
+  `SystemSettingsSelection.Definitions`, no reflection), Select All /
+  Clear All / Cancel / Apply buttons. Operates on a working copy —
+  Cancel discards, Apply commits.
+- **UI**:
+  ([src/SolutionSherlockControl.Designer.cs](src/SolutionSherlockControl.Designer.cs),
+  [src/SolutionSherlockControl.cs](src/SolutionSherlockControl.cs)) —
+  `chkIncludeSystemSettings` + `btnConfigureSystemSettings` added to
+  the existing `tlpExportOptions` row (now 5 columns:
+  `chkExportManaged | chkIncludeSystemSettings |
+  btnConfigureSystemSettings | prgExport | lblExportStatus`).
+  `btnConfigureSystemSettings.Enabled` mirrors
+  `chkIncludeSystemSettings.Checked`. Both new controls are disabled
+  along with the rest of the action buttons during background
+  operations. `UpdateConnection` resets the checkbox to unchecked and
+  clears the view model's selection.
+
+### Changed
+
+- **`ExportSolutionOptions` defaults are now `false` for every
+  system-settings flag**. Previously the model initialized
+  `ExportCalendarSettings`, `ExportCustomizationSettings`,
+  `ExportEmailTrackingSettings`, `ExportGeneralSettings`,
+  `ExportMarketingSettings`, `ExportOutlookSynchronizationSettings`,
+  `ExportRelationshipRoles`, `ExportSales`, and
+  `ExportAutoNumberingSettings` to `true` — which meant every export
+  from this tool silently included every system setting, contradicting
+  the UI (which only showed the Managed checkbox). The new defaults
+  match the user-visible state: default construction of
+  `ExportSolutionOptions` = "unmanaged, no system settings". The user's
+  new spec makes this explicit ("existing behavior = no system
+  settings when Include System Settings is unchecked"). See below
+  under **Behavior change disclosure**.
+- Export log line now includes `includeSystemSettings=true/false`
+  alongside the pre-existing `managed=` entry, so the activity log
+  reflects the full request configuration.
+
+### Behavior change disclosure
+
+Prior versions constructed `ExportSolutionOptions` with every system
+flag defaulting to `true`; the `Managed` checkbox was the only visible
+control. So every export from this tool historically sent
+`ExportCalendarSettings=true` etc. to Dataverse — even though nothing
+in the UI indicated that.
+
+Under the new spec, the "existing behavior" the user wants to preserve
+is the *visible* behavior: unchecked-by-default. To match that, the
+defaults on `ExportSolutionOptions` are now `false`. The net effect:
+
+- A user who runs Export Solution today with both checkboxes unchecked
+  will get a ZIP that omits Calendar / Customization / Email tracking /
+  General / Marketing / Outlook Sync / Relationship Roles / ISV Config /
+  Sales settings — matching what the UI has always claimed but the
+  request never actually reflected.
+- A user who wants the prior "everything on" behavior now has to tick
+  Include System Settings, click Configure..., and click Select All.
+
+This is the intended user-requested behavior per the feature spec
+(requirements #7, #10, #16). Documented here because it *is* a wire-level
+change to the SDK request — even though the UI has always described the
+new behavior as the "default".
+
+### Files changed
+
+- Modified: [src/Models/ExportSolutionOptions.cs](src/Models/ExportSolutionOptions.cs) — defaults `false`; added `ApplySystemSettings`.
+- Modified: [src/ViewModels/BrowseSolutionsViewModel.cs](src/ViewModels/BrowseSolutionsViewModel.cs) — new state, validation, `BuildExportOptions`.
+- Modified: [src/SolutionSherlockControl.Designer.cs](src/SolutionSherlockControl.Designer.cs) — new controls in `tlpExportOptions`.
+- Modified: [src/SolutionSherlockControl.cs](src/SolutionSherlockControl.cs) — wiring, theming, state reset, log line.
+- New: [src/Models/SystemSettingsSelection.cs](src/Models/SystemSettingsSelection.cs).
+- New: [src/SystemSettingsDialog.cs](src/SystemSettingsDialog.cs).
+- Documentation: [README.md](README.md) section 10, this changelog, [REGRESSION_VALIDATION.md](REGRESSION_VALIDATION.md) tests 1-12.
+
+### Build validation
+
+- `dotnet build src/SolutionSherlock.csproj -v:minimal` — **Build
+  succeeded**, 0 errors, 1 pre-existing warning (`MSB3277`
+  IdentityModel version conflict, unchanged from before).
+- No new NuGet references, no target-framework change.
+
+---
+
 ## [Unreleased] — Audit pass 2026-08-25
 
 Codebase audit + safe refactoring pass. No public API removed, no public

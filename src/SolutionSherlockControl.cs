@@ -130,6 +130,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             UiTheme.StyleSecondaryButton(btnPrevPage);
             UiTheme.StyleSecondaryButton(btnNextPage);
             UiTheme.StylePrimaryButton(btnExportComponents);
+            UiTheme.StyleSecondaryButton(btnConfigureSystemSettings);
 
             tsBrowseActions.Renderer = UiTheme.CreateToolStripRenderer();
             tsBrowseActions.BackColor = UiTheme.Surface;
@@ -311,6 +312,13 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             lblExportStatus.Text = string.Empty;
             SetAllActionButtonsEnabled(true);
             btnExportComponents.Enabled = false;
+            // System-settings state is per-connection: a fresh connection starts
+            // with Include System Settings unchecked and the working selection
+            // cleared, matching the plugin's overall "unchecked by default" rule.
+            chkIncludeSystemSettings.Checked = false;
+            btnConfigureSystemSettings.Enabled = false;
+            _browseViewModel.IncludeSystemSettings = false;
+            _browseViewModel.SystemSettings.ClearAll();
             _solutionsPinned = false;
             _componentsPinned = false;
             ApplySolutionsPinnedState();
@@ -666,11 +674,46 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             dgvSolutionComponents.SelectionChanged += DgvSolutionComponents_SelectionChanged;
             dgvSolutionComponents.CellClick += DgvSolutionComponents_CellClick;
 
+            // Advanced system-settings wiring. The Configure... button is only
+            // enabled while Include System Settings is ticked - see requirement #5
+            // in the feature spec. Enabled-state on _browseViewModel is set at export
+            // time (BuildExportOptions gates the payload behind IncludeSystemSettings)
+            // so the button's Enabled state here is a UI affordance only.
+            chkIncludeSystemSettings.CheckedChanged += ChkIncludeSystemSettings_CheckedChanged;
+            btnConfigureSystemSettings.Click += BtnConfigureSystemSettings_Click;
+            btnConfigureSystemSettings.Enabled = chkIncludeSystemSettings.Checked;
+
             // Initial layout: Solutions expanded, Components collapsed until View Component is run.
             ApplySolutionsPinnedState();
             ApplyComponentsPinnedState();
             SetSolutionsGridCollapsed(false);
             SetComponentsGridCollapsed(true);
+        }
+
+        private void ChkIncludeSystemSettings_CheckedChanged(object sender, EventArgs e)
+        {
+            btnConfigureSystemSettings.Enabled = chkIncludeSystemSettings.Checked;
+
+            // Mirror the checkbox state onto the view model right away. The export
+            // path re-reads this at Export time, but keeping the two in sync means
+            // BuildExportOptions can never see a stale value - even if the export
+            // is somehow triggered before the click reaches ExportSelectedSolutionAsync.
+            if (_browseViewModel != null)
+                _browseViewModel.IncludeSystemSettings = chkIncludeSystemSettings.Checked;
+        }
+
+        private void BtnConfigureSystemSettings_Click(object sender, EventArgs e)
+        {
+            if (_browseViewModel == null) return;
+
+            using (var dialog = new SystemSettingsDialog(_browseViewModel.SystemSettings))
+            {
+                if (dialog.ShowDialog(this) != DialogResult.OK || dialog.Result == null) return;
+
+                // Copy the applied working-copy back onto the persistent selection.
+                foreach (var definition in SystemSettingsSelection.Definitions)
+                    definition.Setter(_browseViewModel.SystemSettings, definition.Getter(dialog.Result));
+            }
         }
 
         /// <summary>Pure layout toggle - never touches dgvSolutions' data source or selection.</summary>
@@ -1491,7 +1534,13 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             prgExport.Visible = true;
             lblExportStatus.ForeColor = UiTheme.TextSecondary;
             lblExportStatus.Text = "Preparing export...";
-            LogInfo($"Export started: solution='{solutionInfo.UniqueName}', managed={chkExportManaged.Checked}, destination='{destinationPath}'");
+
+            // Sync UI state to the view model at export time so BuildExportOptions
+            // sees exactly what the user picked, even if the CheckedChanged handler
+            // ever fails to fire (e.g. programmatic Checked assignment ordering).
+            _browseViewModel.IncludeSystemSettings = chkIncludeSystemSettings.Checked;
+
+            LogInfo($"Export started: solution='{solutionInfo.UniqueName}', managed={chkExportManaged.Checked}, includeSystemSettings={chkIncludeSystemSettings.Checked}, destination='{destinationPath}'");
 
             // Same Progress<T> pattern as Load All Solutions: captures this UI
             // thread's context now, so .Report() calls from SolutionExportService's
@@ -1589,6 +1638,8 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             // DgvSolutions_SelectionChanged) - never selection or grid visibility.
             btnExportComponents.Enabled = enabled && _lastComponentDetails != null && _lastComponentDetails.Count > 0;
             chkExportManaged.Enabled = enabled;
+            chkIncludeSystemSettings.Enabled = enabled;
+            btnConfigureSystemSettings.Enabled = enabled && chkIncludeSystemSettings.Checked;
         }
 
         /// <summary>

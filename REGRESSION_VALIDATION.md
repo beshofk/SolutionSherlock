@@ -209,3 +209,60 @@ environment, exercising Search Components, Load All Solutions, View
 Components (including one solution added with "Include Subcomponents"),
 component CSV export, and solution ZIP export in both managed and
 unmanaged form.
+
+---
+
+## Advanced system-settings pass — feature test matrix
+
+Verification method: **static code-level analysis** for every row
+below. No live Dataverse environment is available in this workspace,
+so items marked `NOT TESTED` are the ones that require a real
+`IOrganizationService` response to observe. Every row without that
+constraint is verified by tracing the code path from click → view
+model → `ExportSolutionOptions` → `ExportSolutionRequest` field
+mapping in
+[SolutionExportService](src/Services/SolutionExportService.cs).
+
+| # | Scenario | Expected | Observed via | Status |
+|---|---|---|---|---|
+| 1 | **Existing default** — both checkboxes unchecked | `Managed = false`, all nine system flags `false` | `BuildExportOptions(false)` returns `new ExportSolutionOptions { Managed = false }` (defaults are all `false`); `ApplySystemSettings` is not called because `IncludeSystemSettings == false`. | **PASS** |
+| 2 | **Managed only** — Managed = true, Include = false | `Managed = true`, all nine `false` | `BuildExportOptions(true)` sets `Managed = true`; `ApplySystemSettings` skipped. | **PASS** |
+| 3 | **Unmanaged + system settings** — Managed = false, Include = true, e.g. Calendar + General + Sales ticked | `Managed = false`, `Calendar/General/Sales = true`, other six `false` | `BuildExportOptions(false)` sets `Managed = false`, then `ApplySystemSettings` copies the three ticked flags from `SystemSettings` onto the options. | **PASS** |
+| 4 | **Managed + system settings** — Managed = true, Include = true, several selected | Same as #3 with `Managed = true` | Same code path as #3 with `exportManaged = true`. | **PASS** |
+| 5 | **System settings disabled after configuration** — user configures Calendar/General/Sales then unchecks Include | All nine flags `false` on the outgoing request | `BuildExportOptions` skips `ApplySystemSettings` when `IncludeSystemSettings == false`. `SystemSettings` retains the ticked flags in memory (for UX continuity), but they never reach the request. | **PASS** |
+| 6 | **Select All** in the dialog | All nine `SystemSettingsSelection` flags become `true`; every dialog checkbox visibly checked | `SystemSettingsDialog.ApplyBulk(true)` iterates the same `Definitions` list used to render the checkboxes, setting both the CheckBox state and the working-copy value. | **PASS** |
+| 7 | **Clear All** in the dialog | All nine flags `false`; every checkbox unchecked | `SystemSettingsDialog.ApplyBulk(false)`, same mechanism as #6. | **PASS** |
+| 8 | **Apply persistence** — change selections → Apply → reopen | Selections retained on next open | `BtnConfigureSystemSettings_Click` copies `dialog.Result` onto `_browseViewModel.SystemSettings` field-by-field; next `SystemSettingsDialog` construction clones from that. | **PASS** |
+| 9 | **Cancel discards** — change selections → Cancel → reopen | Original selections restored | Dialog operates on `_workingCopy = currentSelection.Clone()`; the `Result` property is only assigned in the `Apply` button's Click handler. `Cancel` returns `DialogResult.Cancel`, and the caller's `if (dialog.ShowDialog(this) != DialogResult.OK ...)` short-circuits before touching `_browseViewModel.SystemSettings`. | **PASS** |
+| 10 | **No settings selected** — Include = true, all nine unchecked | Export refused with validation message; no SDK call made | `BrowseSolutionsViewModel.ExportSelectedSolutionAsync` throws `InvalidOperationException("Include System Settings is enabled but no individual setting is selected...")` **before** calling `_exportService.ExportSolutionAsync`; the existing catch block in the control shows this via `IDialogService.ShowError`. | **PASS** |
+| 11 | **Export failure** — existing error handling unchanged | `FaultException<OrganizationServiceFault>`, `TimeoutException`, `IOException`, and generic `Exception` catches still fire | The catch blocks in [SolutionSherlockControl.ExportSelectedSolutionAsync](src/SolutionSherlockControl.cs) are unchanged; the new validation runs *before* those. | **PASS** |
+| 12 | **Regression** — existing Search Components, Load All Solutions, View Components, CSV export | All still function | Not touched by this pass except for the new controls' `SetAllActionButtonsEnabled` line and `UpdateConnection` state reset — both additive. Build passes. | **PASS** (static) |
+| — | End-to-end SDK request field values landed at Dataverse | `ExportSolutionRequest.ExportCalendarSettings` etc. match user's ticks | Requires a live connection. | **NOT TESTED** |
+| — | Round-trip verification that the resulting ZIP contains / omits the requested settings | ZIP payload matches request flags | Requires a live connection. | **NOT TESTED** |
+
+### Independence verification
+
+The two checkboxes are independent — verified by inspection of
+`BuildExportOptions`:
+
+- `Managed` is set directly from the `exportManaged` parameter.
+- System-setting flags are only touched when `IncludeSystemSettings ==
+  true`, and even then only from `SystemSettings`, not from
+  `exportManaged`.
+
+Neither path reads the other's value.
+
+### Managed/Unmanaged unchanged
+
+- Checkbox name: `chkExportManaged` — unchanged.
+- Checkbox text: `"Export as Managed"` — unchanged.
+- Default state: unchecked — unchanged.
+- Wire flow: `chkExportManaged.Checked` → `ExportSelectedSolutionAsync`
+  parameter → `BuildExportOptions(bool exportManaged)` → `new
+  ExportSolutionOptions { Managed = exportManaged }` — unchanged.
+
+### Build validation
+
+- `dotnet build src/SolutionSherlock.csproj -v:minimal` after every
+  code change — **Build succeeded**, 0 errors, 1 pre-existing warning
+  (`MSB3277`, unchanged since before this pass).

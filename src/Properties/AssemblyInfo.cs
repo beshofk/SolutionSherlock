@@ -5,11 +5,12 @@ using System.Runtime.InteropServices;
 // to detect whether an update is available, so bump this on every release you
 // intend to distribute (see README.md "Distributing this plugin").
 [assembly: AssemblyTitle("SolutionSherlock")]
-[assembly: AssemblyDescription("Search across all solutions in a Dataverse / Dynamics 365 environment to find which ones contain a given entity, field, or other component.")]
+[assembly: AssemblyDescription(
+    "Advanced solution exploration and component analysis for Dataverse and Dynamics 365 environments.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Beshoy Fanous")]
 [assembly: AssemblyProduct("SolutionSherlock")]
-[assembly: AssemblyCopyright("Copyright © 2026")]
+[assembly: AssemblyCopyright("Copyright © 2026 Beshoy Fanous")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

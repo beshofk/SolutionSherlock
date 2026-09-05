@@ -10,5 +10,8 @@
     <Compile Update="SolutionSherlockControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Update="SystemSettingsDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
   </ItemGroup>
 </Project>

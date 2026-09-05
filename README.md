@@ -340,3 +340,106 @@ just hides the affected rows and repaints the header's glyph - no rebind, no
 flicker, no lost scroll position. Collapse state resets to "everything
 expanded" each time a fresh roster loads (new solution, page change,
 reconnect), tracked in `_collapsedGroupKeys`.
+
+---
+
+## 10. Export Solution — advanced system settings (latest update)
+
+The Browse Solutions tab's Export Solution flow now exposes an
+**Include System Settings (Advanced)** option in addition to the
+existing **Export as Managed** checkbox. Both are independent and
+default to **unchecked**.
+
+### UI
+
+```
+Export Solution
+
+☐ Export as Managed
+☐ Include System Settings (Advanced)     [ Configure... ]
+```
+
+- **`☐ Export as Managed`** — unchanged. Unchecked = Unmanaged export
+  (the default). Checked = Managed export.
+- **`☐ Include System Settings (Advanced)`** — unchecked by default.
+  When unchecked, **no system settings are included in the export**,
+  regardless of what was previously configured in the dialog. This is
+  the current out-of-the-box behavior of the tool.
+- **`[ Configure... ]`** — disabled while Include System Settings is
+  unchecked. Enabling the checkbox enables the button; clicking it
+  opens the advanced dialog.
+
+### Advanced dialog
+
+```
+Export System Settings (Advanced)
+
+Select the system settings you want to include:
+
+☐ Calendar
+☐ Customization
+☐ Email tracking
+☐ General
+☐ Marketing
+☐ Outlook Synchronization
+☐ Relationship Roles
+☐ ISV Config
+☐ Sales
+
+[ Select All ]    [ Clear All ]      [ Cancel ]  [ Apply ]
+```
+
+Nine per-setting checkboxes, each mapped 1-1 to a flag on
+`Microsoft.Crm.Sdk.Messages.ExportSolutionRequest`
+(`ExportCalendarSettings`, `ExportCustomizationSettings`,
+`ExportEmailTrackingSettings`, `ExportGeneralSettings`,
+`ExportMarketingSettings`, `ExportOutlookSynchronizationSettings`,
+`ExportRelationshipRoles`, `ExportIsvConfig`, `ExportSales`). The
+dialog operates on a **working copy** of the current selection:
+
+- **Apply** commits the working copy back onto the persistent
+  selection.
+- **Cancel** discards changes.
+- **Select All** ticks every checkbox in the dialog (the working
+  copy - persist only on Apply).
+- **Clear All** unticks every checkbox in the dialog.
+
+### Behavior
+
+| Export as Managed | Include System Settings | Effective request |
+|---|---|---|
+| Unchecked | Unchecked | Unmanaged, no system settings (unchanged default). |
+| Checked | Unchecked | Managed, no system settings. |
+| Unchecked | Checked | Unmanaged + only the settings the user ticked in Configure... |
+| Checked | Checked | Managed + only the settings the user ticked in Configure... |
+
+- **When Include System Settings is unchecked, all nine individual
+  settings are treated as unchecked**, regardless of prior
+  configuration - the check happens in
+  `BrowseSolutionsViewModel.BuildExportOptions`, which only invokes
+  `ExportSolutionOptions.ApplySystemSettings` when
+  `IncludeSystemSettings == true`. Stale UI selections cannot leak
+  into the export request.
+- Toggling Include System Settings off **does not clear the user's
+  selections** in the dialog — they're retained as a UX convenience so
+  briefly unchecking and re-checking doesn't wipe your picks. The
+  effective export request is still gated exclusively by the
+  Include System Settings checkbox.
+- **Validation**: If Include System Settings is checked but no
+  individual setting is picked, the export is refused with a
+  "Please select at least one setting, or uncheck Include System
+  Settings" message — no invalid request is sent to Dataverse.
+- **Per-connection reset**: switching to a different connection
+  resets Include System Settings to unchecked and clears the
+  underlying selection, matching the overall "unchecked by default"
+  rule.
+- **`ExportAutoNumberingSettings`** exists on the SDK request but is
+  not part of the nine user-visible checkboxes; it stays `false` on
+  every export request.
+
+The nine supported settings and their SDK mapping are defined once in
+[`SystemSettingsSelection.Definitions`](src/Models/SystemSettingsSelection.cs)
+(display label + strongly-typed getter/setter). Adding a new setting
+is a one-line change to that array plus a matching new property on
+`SystemSettingsSelection`.
+

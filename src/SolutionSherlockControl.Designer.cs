@@ -70,6 +70,8 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
         private System.Windows.Forms.Panel pnlExportOptions;
         private System.Windows.Forms.TableLayoutPanel tlpExportOptions;
         private System.Windows.Forms.CheckBox chkExportManaged;
+        private System.Windows.Forms.CheckBox chkIncludeSystemSettings;
+        private System.Windows.Forms.Button btnConfigureSystemSettings;
         private System.Windows.Forms.ProgressBar prgExport;
         private System.Windows.Forms.Label lblExportStatus;
 
@@ -177,6 +179,8 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.pnlExportOptions = new System.Windows.Forms.Panel();
             this.tlpExportOptions = new System.Windows.Forms.TableLayoutPanel();
             this.chkExportManaged = new System.Windows.Forms.CheckBox();
+            this.chkIncludeSystemSettings = new System.Windows.Forms.CheckBox();
+            this.btnConfigureSystemSettings = new System.Windows.Forms.Button();
             this.prgExport = new System.Windows.Forms.ProgressBar();
             this.lblExportStatus = new System.Windows.Forms.Label();
             this.tsBrowseActions = new System.Windows.Forms.ToolStrip();
@@ -294,7 +298,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.splitMain.Panel2.Controls.Add(this.pnlLog);
             this.splitMain.Panel2MinSize = 70;
             this.splitMain.Size = new System.Drawing.Size(1000, 734);
-            this.splitMain.SplitterDistance = 610;
+            this.splitMain.SplitterDistance = 598;
             this.splitMain.SplitterWidth = 6;
             this.splitMain.TabIndex = 1;
             // 
@@ -307,7 +311,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.tabMain.Name = "tabMain";
             this.tabMain.Padding = new System.Drawing.Point(12, 6);
             this.tabMain.SelectedIndex = 0;
-            this.tabMain.Size = new System.Drawing.Size(1000, 610);
+            this.tabMain.Size = new System.Drawing.Size(1000, 598);
             this.tabMain.TabIndex = 0;
             // 
             // tabBrowse
@@ -315,7 +319,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.tabBrowse.Controls.Add(this.pnlBrowseRoot);
             this.tabBrowse.Location = new System.Drawing.Point(4, 30);
             this.tabBrowse.Name = "tabBrowse";
-            this.tabBrowse.Size = new System.Drawing.Size(992, 576);
+            this.tabBrowse.Size = new System.Drawing.Size(992, 564);
             this.tabBrowse.TabIndex = 1;
             this.tabBrowse.Text = "Browse Solutions";
             this.tabBrowse.UseVisualStyleBackColor = true;
@@ -330,13 +334,13 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.pnlBrowseRoot.Location = new System.Drawing.Point(0, 0);
             this.pnlBrowseRoot.Name = "pnlBrowseRoot";
             this.pnlBrowseRoot.Padding = new System.Windows.Forms.Padding(10);
-            this.pnlBrowseRoot.Size = new System.Drawing.Size(992, 576);
+            this.pnlBrowseRoot.Size = new System.Drawing.Size(992, 564);
             this.pnlBrowseRoot.TabIndex = 0;
             // 
             // splitBrowseTop
             // 
             this.splitBrowseTop.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.splitBrowseTop.Location = new System.Drawing.Point(10, 111);
+            this.splitBrowseTop.Location = new System.Drawing.Point(10, 119);
             this.splitBrowseTop.Name = "splitBrowseTop";
             // 
             // splitBrowseTop.Panel1
@@ -348,7 +352,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             // 
             this.splitBrowseTop.Panel2.Controls.Add(this.grpComponents);
             this.splitBrowseTop.Panel2MinSize = 260;
-            this.splitBrowseTop.Size = new System.Drawing.Size(972, 455);
+            this.splitBrowseTop.Size = new System.Drawing.Size(972, 435);
             this.splitBrowseTop.SplitterDistance = 452;
             this.splitBrowseTop.SplitterWidth = 6;
             this.splitBrowseTop.TabIndex = 2;
@@ -363,7 +367,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.grpSolutions.Location = new System.Drawing.Point(0, 0);
             this.grpSolutions.Name = "grpSolutions";
             this.grpSolutions.Padding = new System.Windows.Forms.Padding(0, 0, 0, 8);
-            this.grpSolutions.Size = new System.Drawing.Size(452, 455);
+            this.grpSolutions.Size = new System.Drawing.Size(452, 435);
             this.grpSolutions.TabIndex = 0;
             this.grpSolutions.TabStop = false;
             // 
@@ -401,7 +405,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.dgvSolutions.RowHeadersVisible = false;
             this.dgvSolutions.RowTemplate.Height = 24;
             this.dgvSolutions.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dgvSolutions.Size = new System.Drawing.Size(452, 329);
+            this.dgvSolutions.Size = new System.Drawing.Size(452, 309);
             this.dgvSolutions.TabIndex = 0;
             // 
             // pnlPaging
@@ -410,7 +414,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.pnlPaging.Controls.Add(this.lblPageIndicator);
             this.pnlPaging.Controls.Add(this.btnPrevPage);
             this.pnlPaging.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.pnlPaging.Location = new System.Drawing.Point(0, 409);
+            this.pnlPaging.Location = new System.Drawing.Point(0, 389);
             this.pnlPaging.Name = "pnlPaging";
             this.pnlPaging.Padding = new System.Windows.Forms.Padding(0, 6, 0, 0);
             this.pnlPaging.Size = new System.Drawing.Size(452, 38);
@@ -539,7 +543,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.grpComponents.Location = new System.Drawing.Point(0, 0);
             this.grpComponents.Name = "grpComponents";
             this.grpComponents.Padding = new System.Windows.Forms.Padding(0, 0, 0, 8);
-            this.grpComponents.Size = new System.Drawing.Size(514, 455);
+            this.grpComponents.Size = new System.Drawing.Size(514, 435);
             this.grpComponents.TabIndex = 0;
             this.grpComponents.TabStop = false;
             // 
@@ -577,7 +581,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.dgvSolutionComponents.RowHeadersVisible = false;
             this.dgvSolutionComponents.RowTemplate.Height = 24;
             this.dgvSolutionComponents.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dgvSolutionComponents.Size = new System.Drawing.Size(514, 251);
+            this.dgvSolutionComponents.Size = new System.Drawing.Size(514, 231);
             this.dgvSolutionComponents.TabIndex = 1;
             // 
             // pnlComponentsHeader
@@ -606,7 +610,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.grpComponentDetails.Controls.Add(this.tlpComponentDetails);
             this.grpComponentDetails.Controls.Add(this.pnlComponentDetailsActions);
             this.grpComponentDetails.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.grpComponentDetails.Location = new System.Drawing.Point(0, 327);
+            this.grpComponentDetails.Location = new System.Drawing.Point(0, 307);
             this.grpComponentDetails.Name = "grpComponentDetails";
             this.grpComponentDetails.Padding = new System.Windows.Forms.Padding(10, 6, 10, 8);
             this.grpComponentDetails.Size = new System.Drawing.Size(514, 120);
@@ -807,7 +811,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.pnlDockTabStrip.Controls.Add(this.lblSolutionsCollapsedTab);
             this.pnlDockTabStrip.Controls.Add(this.lblComponentsCollapsedTab);
             this.pnlDockTabStrip.Dock = System.Windows.Forms.DockStyle.Top;
-            this.pnlDockTabStrip.Location = new System.Drawing.Point(10, 77);
+            this.pnlDockTabStrip.Location = new System.Drawing.Point(10, 85);
             this.pnlDockTabStrip.Name = "pnlDockTabStrip";
             this.pnlDockTabStrip.Padding = new System.Windows.Forms.Padding(0, 0, 0, 8);
             this.pnlDockTabStrip.Size = new System.Drawing.Size(972, 34);
@@ -843,44 +847,70 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.pnlExportOptions.Location = new System.Drawing.Point(10, 36);
             this.pnlExportOptions.Name = "pnlExportOptions";
             this.pnlExportOptions.Padding = new System.Windows.Forms.Padding(0, 6, 0, 8);
-            this.pnlExportOptions.Size = new System.Drawing.Size(972, 41);
+            this.pnlExportOptions.Size = new System.Drawing.Size(972, 49);
             this.pnlExportOptions.TabIndex = 1;
             // 
             // tlpExportOptions
             // 
-            this.tlpExportOptions.ColumnCount = 3;
+            this.tlpExportOptions.ColumnCount = 5;
             this.tlpExportOptions.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 150F));
-            this.tlpExportOptions.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 180F));
+            this.tlpExportOptions.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 158F));
+            this.tlpExportOptions.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 112F));
+            this.tlpExportOptions.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 240F));
             this.tlpExportOptions.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tlpExportOptions.Controls.Add(this.chkExportManaged, 0, 0);
-            this.tlpExportOptions.Controls.Add(this.prgExport, 1, 0);
-            this.tlpExportOptions.Controls.Add(this.lblExportStatus, 2, 0);
+            this.tlpExportOptions.Controls.Add(this.chkIncludeSystemSettings, 1, 0);
+            this.tlpExportOptions.Controls.Add(this.btnConfigureSystemSettings, 2, 0);
+            this.tlpExportOptions.Controls.Add(this.prgExport, 3, 0);
+            this.tlpExportOptions.Controls.Add(this.lblExportStatus, 4, 0);
             this.tlpExportOptions.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tlpExportOptions.Location = new System.Drawing.Point(0, 6);
             this.tlpExportOptions.Name = "tlpExportOptions";
             this.tlpExportOptions.RowCount = 1;
             this.tlpExportOptions.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tlpExportOptions.Size = new System.Drawing.Size(972, 27);
+            this.tlpExportOptions.Size = new System.Drawing.Size(972, 35);
             this.tlpExportOptions.TabIndex = 0;
             // 
             // chkExportManaged
             // 
             this.chkExportManaged.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.chkExportManaged.AutoSize = true;
-            this.chkExportManaged.Location = new System.Drawing.Point(3, 4);
+            this.chkExportManaged.Location = new System.Drawing.Point(3, 8);
             this.chkExportManaged.Name = "chkExportManaged";
             this.chkExportManaged.Size = new System.Drawing.Size(126, 19);
             this.chkExportManaged.TabIndex = 0;
             this.chkExportManaged.Text = "Export as Managed";
             this.chkExportManaged.UseVisualStyleBackColor = true;
             // 
+            // chkIncludeSystemSettings
+            // 
+            this.chkIncludeSystemSettings.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.chkIncludeSystemSettings.AutoSize = true;
+            this.chkIncludeSystemSettings.Location = new System.Drawing.Point(153, 8);
+            this.chkIncludeSystemSettings.Name = "chkIncludeSystemSettings";
+            this.chkIncludeSystemSettings.Size = new System.Drawing.Size(152, 19);
+            this.chkIncludeSystemSettings.TabIndex = 1;
+            this.chkIncludeSystemSettings.Text = "Include System Settings (Advanced)";
+            this.chkIncludeSystemSettings.UseVisualStyleBackColor = true;
+            // 
+            // btnConfigureSystemSettings
+            // 
+            this.btnConfigureSystemSettings.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.btnConfigureSystemSettings.Enabled = false;
+            this.btnConfigureSystemSettings.Location = new System.Drawing.Point(311, 3);
+            this.btnConfigureSystemSettings.Name = "btnConfigureSystemSettings";
+            this.btnConfigureSystemSettings.Size = new System.Drawing.Size(106, 29);
+            this.btnConfigureSystemSettings.TabIndex = 2;
+            this.btnConfigureSystemSettings.Text = "Configure...";
+            this.btnConfigureSystemSettings.UseVisualStyleBackColor = true;
+            // 
             // prgExport
             // 
             this.prgExport.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
-            this.prgExport.Location = new System.Drawing.Point(153, 5);
+            this.prgExport.Location = new System.Drawing.Point(423, 9);
             this.prgExport.Name = "prgExport";
-            this.prgExport.Size = new System.Drawing.Size(174, 17);
-            this.prgExport.TabIndex = 1;
+            this.prgExport.Size = new System.Drawing.Size(234, 17);
+            this.prgExport.TabIndex = 3;
             this.prgExport.Visible = false;
             // 
             // lblExportStatus
@@ -888,10 +918,10 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.lblExportStatus.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblExportStatus.AutoSize = true;
             this.lblExportStatus.ForeColor = System.Drawing.SystemColors.GrayText;
-            this.lblExportStatus.Location = new System.Drawing.Point(333, 6);
+            this.lblExportStatus.Location = new System.Drawing.Point(663, 10);
             this.lblExportStatus.Name = "lblExportStatus";
             this.lblExportStatus.Size = new System.Drawing.Size(0, 15);
-            this.lblExportStatus.TabIndex = 2;
+            this.lblExportStatus.TabIndex = 4;
             // 
             // tsBrowseActions
             // 
@@ -929,7 +959,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.tabSearch.Location = new System.Drawing.Point(4, 28);
             this.tabSearch.Name = "tabSearch";
             this.tabSearch.Padding = new System.Windows.Forms.Padding(10);
-            this.tabSearch.Size = new System.Drawing.Size(992, 578);
+            this.tabSearch.Size = new System.Drawing.Size(992, 566);
             this.tabSearch.TabIndex = 0;
             this.tabSearch.Text = "Search Components";
             this.tabSearch.UseVisualStyleBackColor = true;
@@ -941,7 +971,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.pnlSearchRoot.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlSearchRoot.Location = new System.Drawing.Point(10, 10);
             this.pnlSearchRoot.Name = "pnlSearchRoot";
-            this.pnlSearchRoot.Size = new System.Drawing.Size(972, 558);
+            this.pnlSearchRoot.Size = new System.Drawing.Size(972, 546);
             this.pnlSearchRoot.TabIndex = 0;
             // 
             // grpSearchResults
@@ -952,7 +982,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.grpSearchResults.Location = new System.Drawing.Point(0, 171);
             this.grpSearchResults.Name = "grpSearchResults";
             this.grpSearchResults.Padding = new System.Windows.Forms.Padding(8, 6, 8, 8);
-            this.grpSearchResults.Size = new System.Drawing.Size(972, 387);
+            this.grpSearchResults.Size = new System.Drawing.Size(972, 375);
             this.grpSearchResults.TabIndex = 1;
             this.grpSearchResults.TabStop = false;
             this.grpSearchResults.Text = "Search Results";
@@ -992,7 +1022,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.dgvResults.RowHeadersVisible = false;
             this.dgvResults.RowTemplate.Height = 24;
             this.dgvResults.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dgvResults.Size = new System.Drawing.Size(956, 330);
+            this.dgvResults.Size = new System.Drawing.Size(956, 318);
             this.dgvResults.TabIndex = 1;
             // 
             // cmsResults
@@ -1245,7 +1275,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.pnlLog.Location = new System.Drawing.Point(0, 0);
             this.pnlLog.Name = "pnlLog";
             this.pnlLog.Padding = new System.Windows.Forms.Padding(12, 6, 12, 8);
-            this.pnlLog.Size = new System.Drawing.Size(1000, 118);
+            this.pnlLog.Size = new System.Drawing.Size(1000, 130);
             this.pnlLog.TabIndex = 0;
             // 
             // lstLog
@@ -1257,7 +1287,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.lstLog.Location = new System.Drawing.Point(12, 28);
             this.lstLog.Name = "lstLog";
             this.lstLog.SelectionMode = System.Windows.Forms.SelectionMode.MultiExtended;
-            this.lstLog.Size = new System.Drawing.Size(976, 82);
+            this.lstLog.Size = new System.Drawing.Size(976, 94);
             this.lstLog.TabIndex = 0;
             // 
             // lblLogHeader
