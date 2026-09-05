@@ -89,7 +89,9 @@
     <LastGenOutput>Settings.Designer.cs</LastGenOutput>
   </None>
 </ItemGroup>
-<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+<!-- Local dev convenience: copies the built DLL into a local XrmToolBox test install's Plugins folder.
+     Debug-only so Release builds (used for Tool Library packaging) never depend on this developer-specific path. -->
+<Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(Configuration)'=='Debug'">
   <Exec Command="IF NOT EXIST &quot;C:\Users\Beshoy.Fanous\Downloads\XrmToolboxNewTool\Plugins&quot; mkdir &quot;C:\Users\Beshoy.Fanous\Downloads\XrmToolboxNewTool\Plugins&quot;&#xA;copy /Y &quot;$(TargetPath)&quot; &quot;C:\Users\Beshoy.Fanous\Downloads\XrmToolboxNewTool\Plugins\&quot;" />
 </Target>
 

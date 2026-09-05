@@ -6,6 +6,10 @@
 # Local convenience script (not part of shipped source)
 run.ps1
 
+# NuGet packaging output (Tool Library submission package)
+dist/
+*.nupkg
+
 ## ---------------- User-specific files ----------------
 *.rsuser
 *.suo

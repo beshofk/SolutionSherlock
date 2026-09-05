@@ -7,6 +7,8 @@ Microsoft Dataverse / Dynamics 365 solutions and their components.
 
 **Author:** Beshoy Fanous
 
+**License:** [MIT](LICENSE.md)
+
 Status: **Roadmap Phase 1 + 2 complete** (Entity search, Entity → Field search,
 managed/unmanaged filter, grouping, copy/Maker-Portal context menu, plus the
 full Solution Explorer tab described below). Phases 3–6 (more component
@@ -165,17 +167,32 @@ written back into that file as usual.
 
 ## 6. Before distributing
 
-- Add the `SolutionSherlock` logo Base64 strings (`SmallImageBase64` = 32×32
-  PNG, `BigImageBase64` = 80×80 PNG) in `SolutionSherlockPlugin.cs` — see
-  [`Assets/README.md`](Assets/README.md) for how to generate them from
-  `Assets/SolutionSherlock-logo-dark.png`.
+- Bump `AssemblyVersion`/`AssemblyFileVersion` in `Properties/AssemblyInfo.cs`
+  **and** `<version>` in `SolutionSherlock.nuspec` together on every release —
+  they must match, and XrmToolBox's Tool Library uses the assembly version to
+  detect available updates.
 - Update `RepositoryName`, `UserName`, `HelpUrl` in `SolutionSherlockControl.cs`
-  if the repository location changes.
-- Bump `AssemblyVersion`/`AssemblyFileVersion` in `Properties/AssemblyInfo.cs` on every release — XrmToolBox's Tool Library uses this to detect available updates.
-- Follow XrmToolBox's NuGet packaging rules (package only your own files under
-  a `Plugins` folder, depend on the `XrmToolBox` package version you built
-  against — do not bundle CRM SDK assemblies in your package). Package ID:
-  `BeshoyFanous.XrmToolBox.SolutionSherlock`.
+  if the repository location changes, and keep `SolutionSherlock.nuspec`'s
+  `projectUrl`/`iconUrl` in sync.
+- Build the Tool Library NuGet package from the repository root:
+
+  ```powershell
+  dotnet build SolutionSherlock.sln -c Release
+  dotnet pack src\SolutionSherlock.csproj -c Release -p:NuspecFile="..\SolutionSherlock.nuspec" -p:NuspecBasePath=".." -p:NoDefaultExcludes=true -o dist
+  ```
+
+  This produces `dist\BeshoyFanous.XrmToolBox.SolutionSherlock.<version>.nupkg`
+  containing only `SolutionSherlock.dll`/`.pdb`/`.dll.config` plus the
+  third-party assemblies XrmToolBox doesn't already ship (currently
+  `Microsoft.Toolkit.Uwp.Notifications` and its dependencies), all under
+  `lib\net481\Plugins` — no Dataverse SDK/XrmToolBox host assemblies are
+  included, per XrmToolBox's packaging rules. If you add/remove NuGet
+  dependencies, re-check `src\bin\Release` and update the `<files>` list in
+  `SolutionSherlock.nuspec` accordingly.
+- Publish the `.nupkg` to nuget.org, then register the package on the
+  [Tool Library submission page](https://www.xrmtoolbox.com/plugins/new/).
+  See the [Tool Library validation checklist](https://www.xrmtoolbox.com/documentation/for-developers/deploy-your-plugin-in-plugins-store/plugin-validation-check-list/)
+  before submitting.
 
 ---
 

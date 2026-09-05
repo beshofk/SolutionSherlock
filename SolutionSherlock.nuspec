@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>BeshoyFanous.XrmToolBox.SolutionSherlock</id>
+    <version>1.0.0.0</version>
+    <title>SolutionSherlock</title>
+    <authors>Beshoy Fanous</authors>
+    <owners>Beshoy Fanous</owners>
+    <projectUrl>https://github.com/beshofk/SolutionSherlock</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/beshofk/SolutionSherlock/main/Assets/SolutionSherlock-logo-dark.png</iconUrl>
+    <license type="expression">MIT</license>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>SolutionSherlock is an XrmToolBox tool for investigating and exploring Microsoft Dataverse / Dynamics 365 solutions and their components: search which solutions contain a given entity/field, browse a solution's full component roster grouped by type, view component details, and export a solution (managed/unmanaged, with optional system settings) as a deployable package.</description>
+    <summary>Investigate, explore and export Microsoft Dataverse / Dynamics 365 solutions and their components.</summary>
+    <releaseNotes>Initial release. See CHANGELOG.md in the repository for details.</releaseNotes>
+    <copyright>Copyright © 2026 Beshoy Fanous</copyright>
+    <tags>XrmToolBox Plugin SolutionSherlock Dataverse Dynamics365 Solutions Components</tags>
+    <dependencies>
+      <group targetFramework=".NETFramework4.8.1">
+        <dependency id="XrmToolBox" version="1.2025.10.74" />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="src\bin\Release\SolutionSherlock.dll" target="lib\net481\Plugins" />
+    <file src="src\bin\Release\SolutionSherlock.pdb" target="lib\net481\Plugins" />
+    <file src="src\bin\Release\SolutionSherlock.dll.config" target="lib\net481\Plugins" />
+    <file src="src\bin\Release\Microsoft.Toolkit.Uwp.Notifications.dll" target="lib\net481\Plugins" />
+    <file src="src\bin\Release\Microsoft.Bcl.AsyncInterfaces.dll" target="lib\net481\Plugins" />
+    <file src="src\bin\Release\System.Buffers.dll" target="lib\net481\Plugins" />
+    <file src="src\bin\Release\System.Memory.dll" target="lib\net481\Plugins" />
+    <file src="src\bin\Release\System.Numerics.Vectors.dll" target="lib\net481\Plugins" />
+    <file src="src\bin\Release\System.Runtime.CompilerServices.Unsafe.dll" target="lib\net481\Plugins" />
+    <file src="src\bin\Release\System.Text.Encodings.Web.dll" target="lib\net481\Plugins" />
+    <file src="src\bin\Release\System.Text.Json.dll" target="lib\net481\Plugins" />
+    <file src="src\bin\Release\System.Threading.Tasks.Extensions.dll" target="lib\net481\Plugins" />
+    <file src="src\bin\Release\System.ValueTuple.dll" target="lib\net481\Plugins" />
+  </files>
+</package>
