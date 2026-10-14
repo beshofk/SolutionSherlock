@@ -2,14 +2,15 @@
 
   <!--
     Target framework rationale:
-    The XrmToolBox host application currently ships against .NET Framework 4.8
-    (see the "XrmToolBox" NuGet package, which is what every plugin references
-    for compile-time types). A plugin runs IN-PROCESS inside the host, so it
-    must target the same framework the host runs on - net48 - regardless of
-    which Dataverse SDK client package you separately use elsewhere in your
-    codebase. VS2026 opens and builds this SDK-style net48 project with no
-    changes; VS2026 is fully backward compatible with VS2022-era project
-    types and does not require SLNX or any new project format.
+    The XrmToolBox host application currently ships against .NET Framework 4.8.1
+    (see lib\XrmToolBox.Extensibility.dll, copied from an installed XrmToolBox -
+    not a NuGet package - which is what every plugin references for compile-time
+    types). A plugin runs IN-PROCESS inside the host, so it must target the same
+    framework the host runs on - net481 - regardless of which Dataverse SDK
+    client package you separately use elsewhere in your codebase. VS2026 opens
+    and builds this SDK-style net481 project with no changes; VS2026 is fully
+    backward compatible with VS2022-era project types and does not require
+    SLNX or any new project format.
 
     Do NOT confuse this with the .NET Framework 4.6.2 requirement for
     server-side Dataverse plugin/workflow-activity assemblies (the kind you
@@ -71,12 +72,6 @@
       <DependentUpon>SolutionSherlockControl.cs</DependentUpon>
     </Compile>
   </ItemGroup>
-<ItemGroup>
-  <Reference Include="Microsoft.Toolkit.Uwp.Notifications">
-    <HintPath>lib\Microsoft.Toolkit.Uwp.Notifications.dll</HintPath>
-    <Private>true</Private>
-  </Reference>
-</ItemGroup>
 <ItemGroup>
   <EmbeddedResource Update="Properties\Resources.resx">
     <Generator>ResXFileCodeGenerator</Generator>

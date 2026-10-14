@@ -44,7 +44,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock.Services
 
             var query = new QueryExpression("solution")
             {
-                ColumnSet = new ColumnSet("friendlyname", "uniquename", "ismanaged", "version", "publisherid", "modifiedon"),
+                ColumnSet = new ColumnSet("friendlyname", "uniquename", "ismanaged", "version", "publisherid", "modifiedon", "createdon"),
                 Criteria = new FilterExpression(LogicalOperator.And)
                 {
                     Conditions =
@@ -81,7 +81,8 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock.Services
                         IsManaged = row.GetAttributeValue<bool>("ismanaged"),
                         Version = row.GetAttributeValue<string>("version"),
                         PublisherName = publisherRef?.Name,
-                        ModifiedOn = row.GetAttributeValue<DateTime?>("modifiedon")
+                        ModifiedOn = row.GetAttributeValue<DateTime?>("modifiedon"),
+                        CreatedOn = row.GetAttributeValue<DateTime?>("createdon")
                     };
                 }
 

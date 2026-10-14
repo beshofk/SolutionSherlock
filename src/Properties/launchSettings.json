@@ -7,7 +7,7 @@
     "Profile 1": {
       "commandName": "Executable",
       "executablePath": "C:\\Users\\Beshoy.Fanous\\Downloads\\XrmToolboxNewTool\\XrmToolBox.exe",
-      "commandLineArgs": "/overridepath:. /plugin:\"SolutionSherlock\";",
+      "commandLineArgs": "/overridepath:. /plugin:\"SolutionSherlock\"",
       "workingDirectory": "C:\\Users\\Beshoy.Fanous\\Downloads\\XrmToolboxNewTool"
     }
   }

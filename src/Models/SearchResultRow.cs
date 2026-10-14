@@ -25,5 +25,8 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock.Models
 
         /// <summary>The component's real Dataverse GUID (SearchResult.ComponentObjectId).</summary>
         public System.Guid ComponentGuid { get; set; }
+
+        public string CreatedOnDisplay { get; set; }
+        public string ModifiedOnDisplay { get; set; }
     }
 }

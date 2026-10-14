@@ -5,12 +5,13 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using BeshoyFanous.XrmToolBox.SolutionSherlock.Helpers;
 using BeshoyFanous.XrmToolBox.SolutionSherlock.Interfaces;
 using BeshoyFanous.XrmToolBox.SolutionSherlock.Models;
 
 namespace BeshoyFanous.XrmToolBox.SolutionSherlock.ViewModels
 {
-    public enum SolutionSortColumn { Name, Date }
+    public enum SolutionSortColumn { Name, Date, CreatedOn }
 
     /// <summary>
     /// Holds and orchestrates all the non-UI state for the Browse Solutions tab:
@@ -120,12 +121,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock.ViewModels
         {
             IEnumerable<SolutionInfo> filtered = _allSolutions;
             if (!string.IsNullOrWhiteSpace(SearchText))
-            {
-                var text = SearchText.Trim();
-                filtered = filtered.Where(s =>
-                    (s.FriendlyName?.IndexOf(text, StringComparison.OrdinalIgnoreCase) >= 0) ||
-                    (s.UniqueName?.IndexOf(text, StringComparison.OrdinalIgnoreCase) >= 0));
-            }
+                filtered = filtered.Where(s => TextFilter.Matches(SearchText, s.FriendlyName, s.UniqueName));
             var filteredList = filtered.ToList();
 
             IOrderedEnumerable<SolutionInfo> sorted;
@@ -134,6 +130,12 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock.ViewModels
                 sorted = SortDescending
                     ? filteredList.OrderByDescending(s => s.ModifiedOn)
                     : filteredList.OrderBy(s => s.ModifiedOn);
+            }
+            else if (SortColumn == SolutionSortColumn.CreatedOn)
+            {
+                sorted = SortDescending
+                    ? filteredList.OrderByDescending(s => s.CreatedOn)
+                    : filteredList.OrderBy(s => s.CreatedOn);
             }
             else
             {

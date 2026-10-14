@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 
 namespace BeshoyFanous.XrmToolBox.SolutionSherlock.Helpers
@@ -158,7 +159,43 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock.Helpers
         /// <summary>Flat, low-noise ToolStrip renderer replacing the default gradient/3D system look.</summary>
         public static ToolStripRenderer CreateToolStripRenderer()
         {
-            return new ToolStripProfessionalRenderer(new ModernColorTable());
+            return new ModernToolStripRenderer();
+        }
+
+        // ToolStrip buttons drawn as the primary action by ModernToolStripRenderer (weak keys: no leak across plugin instances).
+        private static readonly ConditionalWeakTable<ToolStripItem, object> PrimaryToolStripItems = new ConditionalWeakTable<ToolStripItem, object>();
+
+        /// <summary>
+        /// Styles a ToolStripButton like StylePrimaryButton (solid accent fill, white semibold text, darker on hover/press),
+        /// with slightly roomier padding. Its ToolStrip must use CreateToolStripRenderer.
+        /// </summary>
+        public static void StylePrimaryToolStripButton(ToolStripButton button)
+        {
+            int Px(int logical) => button.Owner?.LogicalToDeviceUnits(logical) ?? logical;
+
+            button.Font = new Font("Segoe UI Semibold", 9.75f);
+            button.ForeColor = Color.White;
+            button.Padding = new Padding(Px(14), Px(4), Px(14), Px(4));
+            PrimaryToolStripItems.Remove(button);
+            PrimaryToolStripItems.Add(button, null);
+        }
+
+        private sealed class ModernToolStripRenderer : ToolStripProfessionalRenderer
+        {
+            public ModernToolStripRenderer() : base(new ModernColorTable()) { }
+
+            protected override void OnRenderButtonBackground(ToolStripItemRenderEventArgs e)
+            {
+                if (!PrimaryToolStripItems.TryGetValue(e.Item, out _))
+                {
+                    base.OnRenderButtonBackground(e);
+                    return;
+                }
+
+                var fill = !e.Item.Enabled ? Border : e.Item.Pressed || e.Item.Selected ? PrimaryDark : Primary;
+                using (var brush = new SolidBrush(fill))
+                    e.Graphics.FillRectangle(brush, new Rectangle(Point.Empty, e.Item.Size));
+            }
         }
 
         private sealed class ModernColorTable : ProfessionalColorTable

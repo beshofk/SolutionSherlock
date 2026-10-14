@@ -2,14 +2,13 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
   <metadata>
     <id>BeshoyFanous.XrmToolBox.SolutionSherlock</id>
-    <version>1.0.0.1</version>
+    <version>1.0.0.11</version>
     <title>SolutionSherlock</title>
     <authors>Beshoy Fanous</authors>
     <owners>Beshoy Fanous</owners>
     <projectUrl>https://github.com/beshofk/SolutionSherlock</projectUrl>
-    <!-- iconUrl kept alongside icon: XrmToolBox's Tool Library reads iconUrl directly, and nuget.org falls back to it for older clients -->
-    <iconUrl>https://raw.githubusercontent.com/beshofk/SolutionSherlock/main/Assets/SolutionSherlock-logo-dark.png</iconUrl>
-    <icon>icon.png</icon>
+    <!-- iconUrl only (no <icon>): jsDelivr CDN link to the dedicated 128x128 tool icon, what XrmToolBox's Tool Library "Logo Url" validation accepts -->
+    <iconUrl>https://cdn.jsdelivr.net/gh/beshofk/SolutionSherlock@main/Assets/SolutionSherlock-icon-128.png</iconUrl>
     <readme>README.md</readme>
     <license type="expression">MIT</license>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
@@ -38,7 +37,6 @@
     <file src="src\bin\Release\System.Text.Json.dll" target="lib\net481\Plugins" />
     <file src="src\bin\Release\System.Threading.Tasks.Extensions.dll" target="lib\net481\Plugins" />
     <file src="src\bin\Release\System.ValueTuple.dll" target="lib\net481\Plugins" />
-    <file src="Assets\SolutionSherlock-icon-128.png" target="icon.png" />
     <file src="README.md" target="" />
   </files>
 </package>

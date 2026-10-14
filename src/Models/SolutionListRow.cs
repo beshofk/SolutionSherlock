@@ -10,6 +10,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock.Models
         public string Type { get; set; }
         public string Publisher { get; set; }
         public string Version { get; set; }
+        public string CreatedOnDisplay { get; set; }
         public string ModifiedOnDisplay { get; set; }
         public Guid SolutionId { get; set; }
     }

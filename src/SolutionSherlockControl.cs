@@ -49,6 +49,8 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
     {
         private const string OpenSolutionColumnName = "colOpenSolution";
         private const string SolutionActionsColumnName = "colSolutionActions";
+        // Logical px (DPI-scaled at use): small enough not to block manual resizing, big enough to keep a column grabbable.
+        private const int MinColumnWidth = 50;
 
         private SolutionCache _solutionCache;
         private MetadataResolver _metadataResolver;
@@ -62,7 +64,15 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
         private readonly IDialogService _dialogService;
 
         private List<SearchResult> _lastResults = new List<SearchResult>();
+        // Rows currently bound to dgvResults (ordered, after the client-side filter); _lastResults stays the full set.
+        private List<SearchResult> _displayedResults = new List<SearchResult>();
         private int _rightClickedRowIndex = -1;
+        // Search Results sort state (header click, same toggle convention as the Solutions grid); every new Search resets it to Modified On descending.
+        private enum ResultsSortColumn { Name, CreatedOn, ModifiedOn }
+        private ResultsSortColumn _resultsSortColumn = ResultsSortColumn.ModifiedOn;
+        private bool _resultsSortDescending = true;
+        // Per-grid column sizing (default widths + flexible last column), created when the columns are configured.
+        private readonly Dictionary<DataGridView, GridColumnLayout> _columnLayouts = new Dictionary<DataGridView, GridColumnLayout>();
 
         private List<SolutionComponentDetail> _lastComponentDetails;
         private readonly HashSet<string> _collapsedGroupKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -100,6 +110,10 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             InitializeSearchControls();
             InitializeBrowseControls();
             ApplyModernTheme();
+            InitializeCopySupport();
+
+            foreach (var grid in new[] { dgvResults, dgvSolutions, dgvSolutionComponents })
+                GridHorizontalScrolling.Enable(grid);
         }
 
         /// <summary>
@@ -134,10 +148,11 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
 
             tsBrowseActions.Renderer = UiTheme.CreateToolStripRenderer();
             tsBrowseActions.BackColor = UiTheme.Surface;
-            btnLoadAllSolutions.ForeColor = UiTheme.TextPrimary;
+            UiTheme.StylePrimaryToolStripButton(btnLoadAllSolutions);
             btnAbortBrowse.ForeColor = UiTheme.Error;
 
             lblSolutionsSearch.ForeColor = UiTheme.TextSecondary;
+            lblResultsSearch.ForeColor = UiTheme.TextSecondary;
 
             // Solutions/Components dock-panel headers - Visual Studio tool-window look
             // (accent edge + bold caption + flat collapse glyph) - plus the matching
@@ -146,6 +161,29 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             UiTheme.StyleDockHeader(pnlComponentsDockHeader, pnlComponentsHeaderAccent, lblComponentsDockTitle, btnComponentsCollapseToggle);
             UiTheme.StyleDockTab(lblSolutionsCollapsedTab);
             UiTheme.StyleDockTab(lblComponentsCollapsedTab);
+        }
+
+        /// <summary>UI-only: cell copy for every grid, plus Copy/Select All for the activity log. Runs after ApplyModernTheme so text boxes pick up themed parent colors.</summary>
+        private void InitializeCopySupport()
+        {
+            GridClipboard.Enable(dgvResults, cmsResults);
+            GridClipboard.Enable(dgvSolutions, new ContextMenuStrip(components));
+            GridClipboard.Enable(dgvSolutionComponents, new ContextMenuStrip(components));
+
+            // Unlike Labels, TextBoxes don't inherit parent colors, so copy them to keep the label look.
+            foreach (var box in new[] { txtDetailNameValue, txtDetailLogicalNameValue, txtDetailCreatedOnValue, txtDetailModifiedOnValue })
+            {
+                box.BackColor = box.Parent.BackColor;
+                box.ForeColor = box.Parent.ForeColor;
+            }
+            txtConnectionInfo.BackColor = pnlConnectionStatus.BackColor;
+
+            var logMenu = new ContextMenuStrip(components);
+            var logCopy = new ToolStripMenuItem("Copy", null, (s, e) => txtLog.Copy()) { ShortcutKeyDisplayString = "Ctrl+C" };
+            logMenu.Items.Add(logCopy);
+            logMenu.Items.Add(new ToolStripMenuItem("Select All", null, (s, e) => txtLog.SelectAll()) { ShortcutKeyDisplayString = "Ctrl+A" });
+            logMenu.Opening += (s, e) => logCopy.Enabled = txtLog.SelectionLength > 0;
+            txtLog.ContextMenuStrip = logMenu;
         }
 
         // ============================================================
@@ -169,6 +207,9 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
 
             dgvResults.CellMouseDown += DgvResults_CellMouseDown;
             dgvResults.CellContentClick += DgvResults_CellContentClick;
+            dgvResults.ColumnHeaderMouseClick += DgvResults_ColumnHeaderMouseClick;
+            // Client-side only: re-renders the already-loaded results. Skipped while nothing is shown (no results, or a search is running).
+            txtResultsSearch.TextChanged += (s, e) => { if (dgvResults.DataSource != null) RenderResults(_lastResults); };
             miCopySolutionName.Click += (s, e) => CopySelectedValue(r => r.SolutionFriendlyName);
             miCopyComponentName.Click += (s, e) => CopySelectedValue(r => r.ComponentLogicalName);
             miOpenInMaker.Click += (s, e) => OpenSelectedSolution();
@@ -176,56 +217,84 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
 
         private void ConfigureResultsGridColumns()
         {
+            // Without this, re-binding after DataSource = null (every Search after the first) replaces these columns with auto-generated ones.
+            dgvResults.AutoGenerateColumns = false;
             dgvResults.Columns.Clear();
+            // All grids use AutoSizeColumnsMode.None + GridColumnLayout: independent column widths, horizontal scrolling on overflow, last column fills spare width.
+            int Px(int logicalWidth) => dgvResults.LogicalToDeviceUnits(logicalWidth);
+            var minWidth = Px(MinColumnWidth);
 
             dgvResults.Columns.Add(new DataGridViewTextBoxColumn
             {
                 Name = "colSolution", HeaderText = "Solution",
-                DataPropertyName = nameof(SearchResultRow.Solution), FillWeight = 130
+                DataPropertyName = nameof(SearchResultRow.Solution), Width = Px(210), MinimumWidth = minWidth
             });
             dgvResults.Columns.Add(new DataGridViewTextBoxColumn
             {
                 Name = "colType", HeaderText = "Type",
-                DataPropertyName = nameof(SearchResultRow.Type), FillWeight = 65
+                DataPropertyName = nameof(SearchResultRow.Type), Width = Px(100), MinimumWidth = minWidth
             });
             dgvResults.Columns.Add(new DataGridViewTextBoxColumn
             {
                 Name = "colPublisher", HeaderText = "Publisher",
-                DataPropertyName = nameof(SearchResultRow.Publisher), FillWeight = 90
+                DataPropertyName = nameof(SearchResultRow.Publisher), Width = Px(150), MinimumWidth = minWidth
             });
             dgvResults.Columns.Add(new DataGridViewTextBoxColumn
             {
                 Name = "colComponentType", HeaderText = "Component Type",
-                DataPropertyName = nameof(SearchResultRow.Component), FillWeight = 100
+                DataPropertyName = nameof(SearchResultRow.Component), Width = Px(150), MinimumWidth = minWidth
             });
             dgvResults.Columns.Add(new DataGridViewTextBoxColumn
             {
                 Name = "colComponentName", HeaderText = "Component",
-                DataPropertyName = nameof(SearchResultRow.Name), FillWeight = 160
+                DataPropertyName = nameof(SearchResultRow.Name), Width = Px(260), MinimumWidth = minWidth
             });
             dgvResults.Columns.Add(new DataGridViewTextBoxColumn
             {
                 Name = "colParent", HeaderText = "Parent Entity",
-                DataPropertyName = nameof(SearchResultRow.Parent), FillWeight = 90
+                DataPropertyName = nameof(SearchResultRow.Parent), Width = Px(140), MinimumWidth = minWidth
             });
             dgvResults.Columns.Add(new DataGridViewTextBoxColumn
             {
                 Name = "colVersion", HeaderText = "Version",
-                DataPropertyName = nameof(SearchResultRow.Version), FillWeight = 55
+                DataPropertyName = nameof(SearchResultRow.Version), Width = Px(90), MinimumWidth = minWidth
             });
             dgvResults.Columns.Add(new DataGridViewTextBoxColumn
             {
                 Name = "colComponentGuid", HeaderText = "GUID",
-                DataPropertyName = nameof(SearchResultRow.ComponentGuid), FillWeight = 95,
+                DataPropertyName = nameof(SearchResultRow.ComponentGuid), Width = Px(230), MinimumWidth = minWidth,
                 DefaultCellStyle = { ForeColor = SystemColors.GrayText, Font = new Font("Consolas", 8f) }
+            });
+            dgvResults.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "colCreatedOn", HeaderText = "Created On",
+                DataPropertyName = nameof(SearchResultRow.CreatedOnDisplay), Width = Px(135), MinimumWidth = minWidth
+            });
+            dgvResults.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "colModifiedOn", HeaderText = "Modified On",
+                DataPropertyName = nameof(SearchResultRow.ModifiedOnDisplay), Width = Px(135), MinimumWidth = minWidth
             });
             dgvResults.Columns.Add(new DataGridViewLinkColumn
             {
                 Name = OpenSolutionColumnName, HeaderText = string.Empty,
                 DataPropertyName = nameof(SearchResultRow.SolutionUrl),
                 UseColumnTextForLinkValue = true, Text = "Open solution \u2197",
-                TrackVisitedState = false, FillWeight = 85
+                TrackVisitedState = false, Width = Px(130), MinimumWidth = minWidth
             });
+            CaptureDefaultColumnWidths(dgvResults, "colSolution", "colComponentName");
+        }
+
+        /// <summary>Sets up a grid's column sizing (see GridColumnLayout); <paramref name="growableColumns"/> share spare width on a reset.</summary>
+        private void CaptureDefaultColumnWidths(DataGridView grid, params string[] growableColumns)
+        {
+            _columnLayouts[grid] = new GridColumnLayout(grid, growableColumns);
+        }
+
+        /// <summary>Resets a grid to its content-based initial layout when a NEW result set loads; the last column then fills any remaining width.</summary>
+        private void ApplyDefaultColumnWidths(DataGridView grid)
+        {
+            if (_columnLayouts.TryGetValue(grid, out var layout)) layout.ResetToDefaults();
         }
 
         private void RefreshSubTypeOptions()
@@ -319,14 +388,14 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             btnConfigureSystemSettings.Enabled = false;
             _browseViewModel.IncludeSystemSettings = false;
             _browseViewModel.SystemSettings.ClearAll();
-            _solutionsPinned = false;
+            _solutionsPinned = true;
             _componentsPinned = false;
             ApplySolutionsPinnedState();
             ApplyComponentsPinnedState();
             SetSolutionsGridCollapsed(false);
             SetComponentsGridCollapsed(true);
 
-            lblConnectionInfo.Text = detail != null
+            txtConnectionInfo.Text = detail != null
                 ? $"Connected to: {detail.OrganizationFriendlyName} ({(detail.UseOnline ? "Online" : "On-Premises")}, v{detail.OrganizationVersion})"
                 : string.Empty;
         }
@@ -430,7 +499,10 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
                     }
 
                     _lastResults = (List<SearchResult>)args.Result;
+                    _resultsSortColumn = ResultsSortColumn.ModifiedOn;
+                    _resultsSortDescending = true;
                     RenderResults(_lastResults);
+                    ApplyDefaultColumnWidths(dgvResults);
                 }
             });
         }
@@ -442,6 +514,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             cboSubType.SelectedIndex = 0;
             chkManagedOnly.Checked = false;
             chkUnmanagedOnly.Checked = false;
+            txtResultsSearch.Text = string.Empty;
 
             _lastResults = new List<SearchResult>();
             RenderResults(_lastResults);
@@ -449,8 +522,11 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
 
         private void RenderResults(List<SearchResult> results)
         {
+            UpdateResultsSortHeaders();
+
             if (results == null || results.Count == 0)
             {
+                _displayedResults = new List<SearchResult>();
                 dgvResults.DataSource = null;
                 lblSummary.Text = results == null
                     ? "Enter search criteria and click Search."
@@ -463,25 +539,99 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             lblSummary.ForeColor = UiTheme.TextPrimary;
             lblSummary.Text = $"{componentCount} component(s) found across {solutionCount} solution(s)";
 
-            var ordered = OrderResults(results);
-
-            dgvResults.DataSource = ordered.Select(r => new SearchResultRow
+            var filterText = txtResultsSearch.Text;
+            var displayed = OrderResults(results).Select(r => new
             {
-                Solution = r.SolutionFriendlyName,
-                Type = r.IsManaged ? "Managed" : "Unmanaged",
-                Publisher = r.Publisher,
-                Component = r.ComponentTypeDisplay,
-                Name = $"{r.ComponentDisplayName} ({r.ComponentLogicalName})",
-                Parent = r.ParentEntityLogicalName,
-                Version = r.Version,
-                SolutionUrl = BuildSolutionUrl(r.SolutionId),
-                ComponentGuid = r.ComponentObjectId
-            }).ToList();
+                Result = r,
+                Row = new SearchResultRow
+                {
+                    Solution = r.SolutionFriendlyName,
+                    Type = r.IsManaged ? "Managed" : "Unmanaged",
+                    Publisher = r.Publisher,
+                    Component = r.ComponentTypeDisplay,
+                    Name = $"{r.ComponentDisplayName} ({r.ComponentLogicalName})",
+                    Parent = r.ParentEntityLogicalName,
+                    Version = r.Version,
+                    SolutionUrl = BuildSolutionUrl(r.SolutionId),
+                    ComponentGuid = r.ComponentObjectId,
+                    CreatedOnDisplay = FormatComponentDate(r.SolutionCreatedOn),
+                    ModifiedOnDisplay = FormatComponentDate(r.SolutionModifiedOn)
+                }
+            })
+            .Where(x => TextFilter.Matches(filterText, x.Row.Solution, x.Row.Type, x.Row.Publisher, x.Row.Component,
+                x.Row.Name, x.Row.Parent, x.Row.Version, x.Row.ComponentGuid.ToString()))
+            .ToList();
+
+            if (!string.IsNullOrWhiteSpace(filterText))
+                lblSummary.Text += displayed.Count == 0
+                    ? $"  —  no rows match '{filterText.Trim()}'."
+                    : $"  —  showing {displayed.Count} of {results.Count} row(s) matching '{filterText.Trim()}'";
+
+            _displayedResults = displayed.Select(x => x.Result).ToList();
+            dgvResults.DataSource = displayed.Select(x => x.Row).ToList();
         }
 
         private List<SearchResult> OrderResults(List<SearchResult> results)
         {
-            return results.OrderBy(r => r.SolutionFriendlyName).ThenBy(r => r.ComponentDisplayName).ToList();
+            IOrderedEnumerable<SearchResult> ordered;
+            if (_resultsSortColumn == ResultsSortColumn.Name)
+            {
+                ordered = _resultsSortDescending
+                    ? results.OrderByDescending(r => r.ComponentDisplayName, StringComparer.OrdinalIgnoreCase).ThenByDescending(r => r.ComponentLogicalName, StringComparer.OrdinalIgnoreCase)
+                    : results.OrderBy(r => r.ComponentDisplayName, StringComparer.OrdinalIgnoreCase).ThenBy(r => r.ComponentLogicalName, StringComparer.OrdinalIgnoreCase);
+            }
+            else
+            {
+                Func<SearchResult, DateTime?> date = _resultsSortColumn == ResultsSortColumn.CreatedOn
+                    ? (Func<SearchResult, DateTime?>)(r => r.SolutionCreatedOn)
+                    : r => r.SolutionModifiedOn;
+                // Sorted on the real DateTime values; rows without a date always go last.
+                var datedFirst = results.OrderBy(r => date(r).HasValue ? 0 : 1);
+                ordered = _resultsSortDescending ? datedFirst.ThenByDescending(date) : datedFirst.ThenBy(date);
+            }
+
+            // Ties keep the previous fixed order (solution, then component).
+            return ordered.ThenBy(r => r.SolutionFriendlyName).ThenBy(r => r.ComponentDisplayName).ToList();
+        }
+
+        /// <summary>Appends a ▲/▼ indicator to whichever Search Results column is the active sort column (same convention as the Solutions grid).</summary>
+        private void UpdateResultsSortHeaders()
+        {
+            string Arrow(ResultsSortColumn column) =>
+                _resultsSortColumn != column ? string.Empty : _resultsSortDescending ? " \u25BC" : " \u25B2";
+
+            dgvResults.Columns["colComponentName"].HeaderText = "Component" + Arrow(ResultsSortColumn.Name);
+            dgvResults.Columns["colCreatedOn"].HeaderText = "Created On" + Arrow(ResultsSortColumn.CreatedOn);
+            dgvResults.Columns["colModifiedOn"].HeaderText = "Modified On" + Arrow(ResultsSortColumn.ModifiedOn);
+        }
+
+        /// <summary>Sort by clicking the Component (name), Created On or Modified On headers; click again to reverse direction. Re-sorts the already-loaded results only.</summary>
+        private void DgvResults_ColumnHeaderMouseClick(object sender, DataGridViewCellMouseEventArgs e)
+        {
+            if (e.ColumnIndex < 0 || e.Button != MouseButtons.Left) return;
+
+            ResultsSortColumn column;
+            switch (dgvResults.Columns[e.ColumnIndex].Name)
+            {
+                case "colComponentName": column = ResultsSortColumn.Name; break;
+                case "colCreatedOn": column = ResultsSortColumn.CreatedOn; break;
+                case "colModifiedOn": column = ResultsSortColumn.ModifiedOn; break;
+                default: return;
+            }
+
+            if (_resultsSortColumn == column)
+            {
+                _resultsSortDescending = !_resultsSortDescending;
+            }
+            else
+            {
+                _resultsSortColumn = column;
+                _resultsSortDescending = false;
+            }
+
+            // Same guard as the client-side filter: nothing to re-sort while no results are shown or a search is running.
+            if (dgvResults.DataSource != null) RenderResults(_lastResults);
+            else UpdateResultsSortHeaders();
         }
 
         private void DgvResults_CellMouseDown(object sender, DataGridViewCellMouseEventArgs e)
@@ -565,6 +715,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
         {
             base.OnLoad(e);
             TrySwapSearchAndBrowseTabs();
+            tabMain.SelectedTab = tabSearch;
         }
 
         private void TrySwapSearchAndBrowseTabs()
@@ -604,9 +755,8 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
 
         private SearchResult GetSelectedResult()
         {
-            if (_rightClickedRowIndex < 0 || _lastResults.Count == 0) return null;
-            var ordered = OrderResults(_lastResults);
-            return _rightClickedRowIndex < ordered.Count ? ordered[_rightClickedRowIndex] : null;
+            if (_rightClickedRowIndex < 0) return null;
+            return _rightClickedRowIndex < _displayedResults.Count ? _displayedResults[_rightClickedRowIndex] : null;
         }
 
         private void CopySelectedValue(Func<SearchResult, string> selector)
@@ -727,9 +877,26 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
         /// <summary>Pure layout toggle - never touches dgvSolutionComponents' data source or selection.</summary>
         private void SetComponentsGridCollapsed(bool collapsed)
         {
+            var solutionsWidthBefore = dgvSolutions.Width;
             splitBrowseTop.Panel2Collapsed = collapsed;
             lblComponentsCollapsedTab.Visible = collapsed;
             UpdateDockTabStripVisibility();
+            RefitPinnedSolutionsGridIfResized(solutionsWidthBefore);
+        }
+
+        /// <summary>
+        /// When a Browse-tab layout transition resized the pinned, visible Solutions grid, re-derives its initial
+        /// column layout for the new width. Only called from those transitions - never from general resize events.
+        /// </summary>
+        private void RefitPinnedSolutionsGridIfResized(int widthBefore)
+        {
+            if (!_solutionsPinned || !IsHandleCreated) return;
+            // Deferred so the SplitContainer has finished laying the Solutions panel out at its new width.
+            BeginInvoke((Action)(() =>
+            {
+                if (_solutionsPinned && !splitBrowseTop.Panel1Collapsed && dgvSolutions.Width != widthBefore)
+                    ApplyDefaultColumnWidths(dgvSolutions);
+            }));
         }
 
         /// <summary>Keeps the auto-hide strip collapsed to zero height whenever neither dock panel is hidden.</summary>
@@ -781,6 +948,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
         /// <summary>Expands both panels and resets the splitter to an even ~50/50 split, clamped to each panel's minimum size.</summary>
         private void ShowBothPanelsSideBySide()
         {
+            var solutionsWidthBefore = dgvSolutions.Width;
             SetSolutionsGridCollapsed(false);
             SetComponentsGridCollapsed(false);
 
@@ -788,6 +956,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             var min = splitBrowseTop.Panel1MinSize;
             var max = available - splitBrowseTop.Panel2MinSize;
             if (max > min) splitBrowseTop.SplitterDistance = Math.Max(min, Math.Min(available / 2, max));
+            RefitPinnedSolutionsGridIfResized(solutionsWidthBefore);
         }
 
         /// <summary>Automatic layout (View Component, connection reset) must never collapse a pinned panel; expanding is always allowed.</summary>
@@ -808,52 +977,60 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
         {
             dgvSolutions.AutoGenerateColumns = false;
             dgvSolutions.Columns.Clear();
+            int Px(int logicalWidth) => dgvSolutions.LogicalToDeviceUnits(logicalWidth);
+            var minWidth = Px(MinColumnWidth);
             dgvSolutions.Columns.Add(new DataGridViewTextBoxColumn
-            { Name = "colFriendlyName", HeaderText = "Friendly Name", DataPropertyName = nameof(SolutionListRow.FriendlyName), FillWeight = 150 });
+            { Name = "colFriendlyName", HeaderText = "Friendly Name", DataPropertyName = nameof(SolutionListRow.FriendlyName), Width = Px(200), MinimumWidth = minWidth });
             dgvSolutions.Columns.Add(new DataGridViewTextBoxColumn
-            { Name = "colUniqueName", HeaderText = "Unique Name", DataPropertyName = nameof(SolutionListRow.UniqueName), FillWeight = 130 });
+            { Name = "colUniqueName", HeaderText = "Unique Name", DataPropertyName = nameof(SolutionListRow.UniqueName), Width = Px(180), MinimumWidth = minWidth });
             dgvSolutions.Columns.Add(new DataGridViewTextBoxColumn
-            { Name = "colSolutionType", HeaderText = "Type", DataPropertyName = nameof(SolutionListRow.Type), FillWeight = 65 });
+            { Name = "colSolutionType", HeaderText = "Type", DataPropertyName = nameof(SolutionListRow.Type), Width = Px(90), MinimumWidth = minWidth });
             dgvSolutions.Columns.Add(new DataGridViewTextBoxColumn
-            { Name = "colSolutionPublisher", HeaderText = "Publisher", DataPropertyName = nameof(SolutionListRow.Publisher), FillWeight = 100 });
+            { Name = "colSolutionPublisher", HeaderText = "Publisher", DataPropertyName = nameof(SolutionListRow.Publisher), Width = Px(150), MinimumWidth = minWidth });
             dgvSolutions.Columns.Add(new DataGridViewTextBoxColumn
-            { Name = "colSolutionVersion", HeaderText = "Version", DataPropertyName = nameof(SolutionListRow.Version), FillWeight = 65 });
+            { Name = "colSolutionVersion", HeaderText = "Version", DataPropertyName = nameof(SolutionListRow.Version), Width = Px(90), MinimumWidth = minWidth });
             dgvSolutions.Columns.Add(new DataGridViewTextBoxColumn
-            { Name = "colModifiedOn", HeaderText = "Modified On", DataPropertyName = nameof(SolutionListRow.ModifiedOnDisplay), FillWeight = 100 });
+            { Name = "colCreatedOn", HeaderText = "Created On", DataPropertyName = nameof(SolutionListRow.CreatedOnDisplay), Width = Px(135), MinimumWidth = minWidth });
+            dgvSolutions.Columns.Add(new DataGridViewTextBoxColumn
+            { Name = "colModifiedOn", HeaderText = "Modified On", DataPropertyName = nameof(SolutionListRow.ModifiedOnDisplay), Width = Px(135), MinimumWidth = minWidth });
             dgvSolutions.Columns.Add(new DataGridViewTextBoxColumn
             {
-                Name = "colSolutionGuid", HeaderText = "GUID", DataPropertyName = nameof(SolutionListRow.SolutionId), FillWeight = 95,
+                Name = "colSolutionGuid", HeaderText = "GUID", DataPropertyName = nameof(SolutionListRow.SolutionId), Width = Px(230), MinimumWidth = minWidth,
                 DefaultCellStyle = { ForeColor = SystemColors.GrayText, Font = new Font("Consolas", 8f) }
             });
             dgvSolutions.Columns.Add(new DataGridViewButtonColumn
             {
                 Name = SolutionActionsColumnName, HeaderText = string.Empty, Text = "Actions \u25be",
-                UseColumnTextForButtonValue = true, FlatStyle = FlatStyle.Flat, FillWeight = 80,
+                UseColumnTextForButtonValue = true, FlatStyle = FlatStyle.Flat, Width = Px(100), MinimumWidth = minWidth,
                 DefaultCellStyle = { ForeColor = UiTheme.Primary, Font = new Font(dgvSolutions.Font, FontStyle.Bold) }
             });
+            CaptureDefaultColumnWidths(dgvSolutions, "colFriendlyName", "colUniqueName");
         }
 
         private void ConfigureSolutionComponentsGridColumns()
         {
             dgvSolutionComponents.AutoGenerateColumns = false;
             dgvSolutionComponents.Columns.Clear();
+            int Px(int logicalWidth) => dgvSolutionComponents.LogicalToDeviceUnits(logicalWidth);
+            var minWidth = Px(MinColumnWidth);
             dgvSolutionComponents.Columns.Add(new DataGridViewTextBoxColumn
-            { Name = "colCompDisplayName", HeaderText = "Display Name", DataPropertyName = nameof(SolutionComponentDisplayRow.DisplayName), FillWeight = 160 });
+            { Name = "colCompDisplayName", HeaderText = "Display Name", DataPropertyName = nameof(SolutionComponentDisplayRow.DisplayName), Width = Px(220), MinimumWidth = minWidth });
             dgvSolutionComponents.Columns.Add(new DataGridViewTextBoxColumn
-            { Name = "colCompName", HeaderText = "Name", DataPropertyName = nameof(SolutionComponentDisplayRow.Name), FillWeight = 140 });
+            { Name = "colCompName", HeaderText = "Name", DataPropertyName = nameof(SolutionComponentDisplayRow.Name), Width = Px(180), MinimumWidth = minWidth });
             dgvSolutionComponents.Columns.Add(new DataGridViewTextBoxColumn
-            { Name = "colCompType", HeaderText = "Type", DataPropertyName = nameof(SolutionComponentDisplayRow.TypeDisplay), FillWeight = 110 });
+            { Name = "colCompType", HeaderText = "Type", DataPropertyName = nameof(SolutionComponentDisplayRow.TypeDisplay), Width = Px(140), MinimumWidth = minWidth });
             dgvSolutionComponents.Columns.Add(new DataGridViewTextBoxColumn
-            { Name = "colCompState", HeaderText = "State", DataPropertyName = nameof(SolutionComponentDisplayRow.State), FillWeight = 70 });
+            { Name = "colCompState", HeaderText = "State", DataPropertyName = nameof(SolutionComponentDisplayRow.State), Width = Px(90), MinimumWidth = minWidth });
             dgvSolutionComponents.Columns.Add(new DataGridViewTextBoxColumn
-            { Name = "colCompCustomizable", HeaderText = "Customizable", DataPropertyName = nameof(SolutionComponentDisplayRow.Customizable), FillWeight = 80 });
+            { Name = "colCompCustomizable", HeaderText = "Customizable", DataPropertyName = nameof(SolutionComponentDisplayRow.Customizable), Width = Px(105), MinimumWidth = minWidth });
             dgvSolutionComponents.Columns.Add(new DataGridViewTextBoxColumn
-            { Name = "colCompDescription", HeaderText = "Description", DataPropertyName = nameof(SolutionComponentDisplayRow.Description), FillWeight = 180 });
+            { Name = "colCompDescription", HeaderText = "Description", DataPropertyName = nameof(SolutionComponentDisplayRow.Description), Width = Px(250), MinimumWidth = minWidth });
             dgvSolutionComponents.Columns.Add(new DataGridViewTextBoxColumn
             {
-                Name = "colCompGuid", HeaderText = "GUID", DataPropertyName = nameof(SolutionComponentDisplayRow.ObjectId), FillWeight = 95,
+                Name = "colCompGuid", HeaderText = "GUID", DataPropertyName = nameof(SolutionComponentDisplayRow.ObjectId), Width = Px(230), MinimumWidth = minWidth,
                 DefaultCellStyle = { ForeColor = SystemColors.GrayText, Font = new Font("Consolas", 8f) }
             });
+            CaptureDefaultColumnWidths(dgvSolutionComponents, "colCompDisplayName", "colCompName");
         }
 
         /// <summary>Synthetic top-level group key for the "Entity" super-group - namespaced so it can never collide with a real component type name.</summary>
@@ -1143,18 +1320,18 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
                 return;
             }
 
-            lblDetailNameValue.Text = ValueOrPlaceholder(boundItem.DisplayName);
-            lblDetailLogicalNameValue.Text = ValueOrPlaceholder(boundItem.Name);
-            lblDetailCreatedOnValue.Text = FormatComponentDate(boundItem.CreatedOn);
-            lblDetailModifiedOnValue.Text = FormatComponentDate(boundItem.ModifiedOn);
+            txtDetailNameValue.Text = ValueOrPlaceholder(boundItem.DisplayName);
+            txtDetailLogicalNameValue.Text = ValueOrPlaceholder(boundItem.Name);
+            txtDetailCreatedOnValue.Text = FormatComponentDate(boundItem.CreatedOn);
+            txtDetailModifiedOnValue.Text = FormatComponentDate(boundItem.ModifiedOn);
         }
 
         private void ResetComponentDetailsPanel()
         {
-            lblDetailNameValue.Text = "—";
-            lblDetailLogicalNameValue.Text = "—";
-            lblDetailCreatedOnValue.Text = "—";
-            lblDetailModifiedOnValue.Text = "—";
+            txtDetailNameValue.Text = "—";
+            txtDetailLogicalNameValue.Text = "—";
+            txtDetailCreatedOnValue.Text = "—";
+            txtDetailModifiedOnValue.Text = "—";
         }
 
 
@@ -1239,6 +1416,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
                     }
 
                     RenderSolutionsPage();
+                    ApplyDefaultColumnWidths(dgvSolutions);
                 }
             });
         }
@@ -1255,6 +1433,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
                 Type = s.IsManaged ? "Managed" : "Unmanaged",
                 Publisher = s.PublisherName,
                 Version = s.Version,
+                CreatedOnDisplay = s.CreatedOn.HasValue ? s.CreatedOn.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "—",
                 ModifiedOnDisplay = s.ModifiedOn.HasValue ? s.ModifiedOn.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "—",
                 SolutionId = s.SolutionId
             }).ToList();
@@ -1285,11 +1464,14 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             dgvSolutions.Columns["colFriendlyName"].HeaderText = "Friendly Name" +
                 (_browseViewModel.SortColumn == SolutionSortColumn.Name ? (_browseViewModel.SortDescending ? downArrow : upArrow) : string.Empty);
 
+            dgvSolutions.Columns["colCreatedOn"].HeaderText = "Created On" +
+                (_browseViewModel.SortColumn == SolutionSortColumn.CreatedOn ? (_browseViewModel.SortDescending ? downArrow : upArrow) : string.Empty);
+
             dgvSolutions.Columns["colModifiedOn"].HeaderText = "Modified On" +
                 (_browseViewModel.SortColumn == SolutionSortColumn.Date ? (_browseViewModel.SortDescending ? downArrow : upArrow) : string.Empty);
         }
 
-        /// <summary>Sort by clicking "Friendly Name" (name sort) or "Modified On" (date sort) column headers; click again to reverse direction.</summary>
+        /// <summary>Sort by clicking "Friendly Name" (name sort), "Created On" or "Modified On" (date sorts) column headers; click again to reverse direction.</summary>
         private void DgvSolutions_ColumnHeaderMouseClick(object sender, DataGridViewCellMouseEventArgs e)
         {
             if (e.ColumnIndex < 0) return;
@@ -1299,6 +1481,8 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
                 _browseViewModel.SetSortColumn(SolutionSortColumn.Name);
             else if (columnName == "colModifiedOn")
                 _browseViewModel.SetSortColumn(SolutionSortColumn.Date);
+            else if (columnName == "colCreatedOn")
+                _browseViewModel.SetSortColumn(SolutionSortColumn.CreatedOn);
             else
                 return;
 
@@ -1412,6 +1596,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
                     // Pinned panels are never auto-collapsed (see AutoCollapseSolutions/AutoCollapseComponents).
                     AutoCollapseComponents(false);
                     AutoCollapseSolutions(true);
+                    ApplyDefaultColumnWidths(dgvSolutionComponents);
                 }
             });
         }
@@ -1653,7 +1838,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             _operationCancellation = new CancellationTokenSource();
             _operationStopwatch = Stopwatch.StartNew();
 
-            lstLog.Items.Clear();
+            txtLog.Clear();
             AppendLog(initialLogMessage);
 
             SetAllActionButtonsEnabled(false);
@@ -1694,8 +1879,16 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
 
             var elapsed = _operationStopwatch?.Elapsed ?? TimeSpan.Zero;
             var stamp = elapsed.ToString(@"mm\:ss\.fff");
-            lstLog.Items.Add($"[{stamp}] {message}");
-            lstLog.TopIndex = Math.Max(0, lstLog.Items.Count - 1);
+            var line = $"[{stamp}] {message}";
+
+            // Don't yank away text the user is selecting; only auto-scroll when nothing is selected.
+            var selectionStart = txtLog.SelectionStart;
+            var selectionLength = txtLog.SelectionLength;
+            txtLog.AppendText(txtLog.TextLength == 0 ? line : Environment.NewLine + line);
+            if (selectionLength > 0)
+                txtLog.Select(selectionStart, selectionLength);
+            else
+                txtLog.ScrollToCaret();
         }
 
         /// <summary>

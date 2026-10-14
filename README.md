@@ -49,13 +49,13 @@ Explore Dataverse solutions in depth:
 
 | Requirement | Version |
 |---|---|
-| Visual Studio | **2026** (v18), Community/Professional/Enterprise. VS2026 is fully backward compatible with VS2022-era project types, so this SDK-style `net48` project opens and builds with no conversion step. |
-| .NET Framework Developer Pack | **4.8** (must be the *Developer Pack*, not just the runtime, or `net48` won't appear as a target) |
-| XrmToolBox | Any recent build — the project references the `XrmToolBox` NuGet package, which supplies both `XrmToolBox.Extensibility` and a version-matched Dataverse SDK. Bump the package version in `SolutionSherlock.csproj` to match whatever XrmToolBox build you're targeting. |
-| Dataverse SDK | Supplied transitively via the `XrmToolBox` package (currently backed by `Microsoft.CrmSdk.CoreAssemblies`). **Do not** add `Microsoft.PowerPlatform.Dataverse.Client` or a different `Microsoft.CrmSdk.CoreAssemblies` version directly to this project — see the comment block at the top of the `.csproj` for why that causes runtime `FileLoadException`s. |
+| Visual Studio | **2026** (v18), Community/Professional/Enterprise. VS2026 is fully backward compatible with VS2022-era project types, so this SDK-style `net481` project opens and builds with no conversion step. |
+| .NET Framework Developer Pack | **4.8.1** (must be the *Developer Pack*, not just the runtime, or `net481` won't appear as a target) |
+| XrmToolBox | Any recent build — the project references `XrmToolBox.Extensibility.dll`, `McTools.Xrm.Connection.dll`, and `McTools.Xrm.Connection.WinForms.dll` as local `<Reference>`s under `src/lib/` (copied from an installed XrmToolBox), not a NuGet package. Replace those three files with the matching ones from whatever XrmToolBox build you're targeting. |
+| Dataverse SDK | Supplied via direct `PackageReference`s (`Microsoft.CrmSdk.CoreAssemblies`, `Microsoft.CrmSdk.XrmTooling.CoreAssembly`) in `SolutionSherlock.csproj`. **Do not** add `Microsoft.PowerPlatform.Dataverse.Client` or a conflicting `Microsoft.CrmSdk.CoreAssemblies` version — see the comment block at the top of the `.csproj` for why that causes runtime `FileLoadException`s. |
 
 > **Framework note:** this is a *client-side XrmToolBox tool* (a WinForms UserControl
-> hosted in-process by XrmToolBox.exe), which is why it targets `net48` — matching
+> hosted in-process by XrmToolBox.exe), which is why it targets `net481` — matching
 > the host. This is unrelated to the `.NET Framework 4.6.2` requirement for
 > server-side Dataverse plugin/workflow-activity assemblies; nothing in this
 > project is a Dataverse plugin.
@@ -65,7 +65,7 @@ Explore Dataverse solutions in depth:
 ## 2. Getting it building in VS2026
 
 1. Open `SolutionSherlock.sln` in VS2026.
-2. Let NuGet restore (`XrmToolBox` package). VS2026's restore is unchanged from
+2. Let NuGet restore (`Microsoft.CrmSdk.*` and `Microsoft.Toolkit.Uwp.Notifications` packages). VS2026's restore is unchanged from
    VS2022 for this project shape.
 3. Build. Output lands in `src/bin/Debug/SolutionSherlock.dll`.
 

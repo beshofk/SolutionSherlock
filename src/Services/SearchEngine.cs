@@ -548,7 +548,9 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock.Services
                 SolutionUniqueName = solution.UniqueName,
                 IsManaged = solution.IsManaged,
                 Publisher = solution.PublisherName,
-                Version = solution.Version
+                Version = solution.Version,
+                SolutionCreatedOn = solution.CreatedOn,
+                SolutionModifiedOn = solution.ModifiedOn
             };
         }
 

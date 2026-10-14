@@ -19,11 +19,11 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
 
         // Shared, outside the tabs
         private System.Windows.Forms.Panel pnlConnectionStatus;
-        private System.Windows.Forms.Label lblConnectionInfo;
+        private System.Windows.Forms.TextBox txtConnectionInfo;
         private System.Windows.Forms.SplitContainer splitMain;
         private System.Windows.Forms.Panel pnlLog;
         private System.Windows.Forms.Label lblLogHeader;
-        private System.Windows.Forms.ListBox lstLog;
+        private System.Windows.Forms.RichTextBox txtLog;
 
         private System.Windows.Forms.TabControl tabMain;
         private System.Windows.Forms.TabPage tabSearch;
@@ -48,6 +48,9 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
         private System.Windows.Forms.GroupBox grpSearchResults;
         private System.Windows.Forms.Panel pnlSearchStatus;
         private System.Windows.Forms.Label lblSummary;
+        private System.Windows.Forms.Panel pnlResultsSearch;
+        private System.Windows.Forms.Label lblResultsSearch;
+        private System.Windows.Forms.TextBox txtResultsSearch;
         private System.Windows.Forms.DataGridView dgvResults;
 
         private System.Windows.Forms.ContextMenuStrip cmsResults;
@@ -108,13 +111,13 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
         private System.Windows.Forms.Button btnExportComponents;
         private System.Windows.Forms.TableLayoutPanel tlpComponentDetails;
         private System.Windows.Forms.Label lblDetailNameCaption;
-        private System.Windows.Forms.Label lblDetailNameValue;
+        private System.Windows.Forms.TextBox txtDetailNameValue;
         private System.Windows.Forms.Label lblDetailLogicalNameCaption;
-        private System.Windows.Forms.Label lblDetailLogicalNameValue;
+        private System.Windows.Forms.TextBox txtDetailLogicalNameValue;
         private System.Windows.Forms.Label lblDetailCreatedOnCaption;
-        private System.Windows.Forms.Label lblDetailCreatedOnValue;
+        private System.Windows.Forms.TextBox txtDetailCreatedOnValue;
         private System.Windows.Forms.Label lblDetailModifiedOnCaption;
-        private System.Windows.Forms.Label lblDetailModifiedOnValue;
+        private System.Windows.Forms.TextBox txtDetailModifiedOnValue;
 
         /// <summary>
         /// Required method for Designer support - do not modify the contents of this
@@ -132,7 +135,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle5 = new System.Windows.Forms.DataGridViewCellStyle();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle6 = new System.Windows.Forms.DataGridViewCellStyle();
             this.pnlConnectionStatus = new System.Windows.Forms.Panel();
-            this.lblConnectionInfo = new System.Windows.Forms.Label();
+            this.txtConnectionInfo = new System.Windows.Forms.TextBox();
             this.splitMain = new System.Windows.Forms.SplitContainer();
             this.tabMain = new System.Windows.Forms.TabControl();
             this.tabBrowse = new System.Windows.Forms.TabPage();
@@ -159,13 +162,13 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.grpComponentDetails = new System.Windows.Forms.GroupBox();
             this.tlpComponentDetails = new System.Windows.Forms.TableLayoutPanel();
             this.lblDetailNameCaption = new System.Windows.Forms.Label();
-            this.lblDetailNameValue = new System.Windows.Forms.Label();
+            this.txtDetailNameValue = new System.Windows.Forms.TextBox();
             this.lblDetailLogicalNameCaption = new System.Windows.Forms.Label();
-            this.lblDetailLogicalNameValue = new System.Windows.Forms.Label();
+            this.txtDetailLogicalNameValue = new System.Windows.Forms.TextBox();
             this.lblDetailCreatedOnCaption = new System.Windows.Forms.Label();
-            this.lblDetailCreatedOnValue = new System.Windows.Forms.Label();
+            this.txtDetailCreatedOnValue = new System.Windows.Forms.TextBox();
             this.lblDetailModifiedOnCaption = new System.Windows.Forms.Label();
-            this.lblDetailModifiedOnValue = new System.Windows.Forms.Label();
+            this.txtDetailModifiedOnValue = new System.Windows.Forms.TextBox();
             this.pnlComponentDetailsActions = new System.Windows.Forms.Panel();
             this.btnExportComponents = new System.Windows.Forms.Button();
             this.pnlComponentsDockHeader = new System.Windows.Forms.Panel();
@@ -196,6 +199,9 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.miOpenInMaker = new System.Windows.Forms.ToolStripMenuItem();
             this.pnlSearchStatus = new System.Windows.Forms.Panel();
             this.lblSummary = new System.Windows.Forms.Label();
+            this.pnlResultsSearch = new System.Windows.Forms.Panel();
+            this.txtResultsSearch = new System.Windows.Forms.TextBox();
+            this.lblResultsSearch = new System.Windows.Forms.Label();
             this.grpSearchCriteria = new System.Windows.Forms.GroupBox();
             this.tlpSearchCriteria = new System.Windows.Forms.TableLayoutPanel();
             this.lblMainType = new System.Windows.Forms.Label();
@@ -213,7 +219,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.btnClear = new System.Windows.Forms.Button();
             this.chkUnmanagedOnly = new System.Windows.Forms.CheckBox();
             this.pnlLog = new System.Windows.Forms.Panel();
-            this.lstLog = new System.Windows.Forms.ListBox();
+            this.txtLog = new System.Windows.Forms.RichTextBox();
             this.lblLogHeader = new System.Windows.Forms.Label();
             this.cmsSolutionActions = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.miActionsViewComponents = new System.Windows.Forms.ToolStripMenuItem();
@@ -253,6 +259,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             ((System.ComponentModel.ISupportInitialize)(this.dgvResults)).BeginInit();
             this.cmsResults.SuspendLayout();
             this.pnlSearchStatus.SuspendLayout();
+            this.pnlResultsSearch.SuspendLayout();
             this.grpSearchCriteria.SuspendLayout();
             this.tlpSearchCriteria.SuspendLayout();
             this.flpSearchButtons.SuspendLayout();
@@ -262,7 +269,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             // 
             // pnlConnectionStatus
             // 
-            this.pnlConnectionStatus.Controls.Add(this.lblConnectionInfo);
+            this.pnlConnectionStatus.Controls.Add(this.txtConnectionInfo);
             this.pnlConnectionStatus.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlConnectionStatus.Location = new System.Drawing.Point(0, 0);
             this.pnlConnectionStatus.Name = "pnlConnectionStatus";
@@ -270,16 +277,17 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.pnlConnectionStatus.Size = new System.Drawing.Size(1000, 26);
             this.pnlConnectionStatus.TabIndex = 0;
             // 
-            // lblConnectionInfo
+            // txtConnectionInfo
             // 
-            this.lblConnectionInfo.AutoSize = true;
-            this.lblConnectionInfo.Dock = System.Windows.Forms.DockStyle.Left;
-            this.lblConnectionInfo.ForeColor = System.Drawing.SystemColors.GrayText;
-            this.lblConnectionInfo.Location = new System.Drawing.Point(12, 6);
-            this.lblConnectionInfo.Name = "lblConnectionInfo";
-            this.lblConnectionInfo.Size = new System.Drawing.Size(0, 15);
-            this.lblConnectionInfo.TabIndex = 0;
-            this.lblConnectionInfo.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.txtConnectionInfo.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.txtConnectionInfo.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.txtConnectionInfo.ForeColor = System.Drawing.SystemColors.GrayText;
+            this.txtConnectionInfo.Location = new System.Drawing.Point(12, 6);
+            this.txtConnectionInfo.Name = "txtConnectionInfo";
+            this.txtConnectionInfo.ReadOnly = true;
+            this.txtConnectionInfo.Size = new System.Drawing.Size(976, 16);
+            this.txtConnectionInfo.TabIndex = 0;
+            this.txtConnectionInfo.TabStop = false;
             // 
             // splitMain
             // 
@@ -375,7 +383,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             // 
             this.dgvSolutions.AllowUserToAddRows = false;
             this.dgvSolutions.AllowUserToDeleteRows = false;
-            this.dgvSolutions.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
+            this.dgvSolutions.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.None;
             this.dgvSolutions.BackgroundColor = System.Drawing.SystemColors.Window;
             this.dgvSolutions.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.dgvSolutions.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.SingleHorizontal;
@@ -551,7 +559,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             // 
             this.dgvSolutionComponents.AllowUserToAddRows = false;
             this.dgvSolutionComponents.AllowUserToDeleteRows = false;
-            this.dgvSolutionComponents.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
+            this.dgvSolutionComponents.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.None;
             this.dgvSolutionComponents.BackgroundColor = System.Drawing.SystemColors.Window;
             this.dgvSolutionComponents.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.dgvSolutionComponents.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.SingleHorizontal;
@@ -626,13 +634,13 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.tlpComponentDetails.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 110F));
             this.tlpComponentDetails.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
             this.tlpComponentDetails.Controls.Add(this.lblDetailNameCaption, 0, 0);
-            this.tlpComponentDetails.Controls.Add(this.lblDetailNameValue, 1, 0);
+            this.tlpComponentDetails.Controls.Add(this.txtDetailNameValue, 1, 0);
             this.tlpComponentDetails.Controls.Add(this.lblDetailLogicalNameCaption, 2, 0);
-            this.tlpComponentDetails.Controls.Add(this.lblDetailLogicalNameValue, 3, 0);
+            this.tlpComponentDetails.Controls.Add(this.txtDetailLogicalNameValue, 3, 0);
             this.tlpComponentDetails.Controls.Add(this.lblDetailCreatedOnCaption, 0, 1);
-            this.tlpComponentDetails.Controls.Add(this.lblDetailCreatedOnValue, 1, 1);
+            this.tlpComponentDetails.Controls.Add(this.txtDetailCreatedOnValue, 1, 1);
             this.tlpComponentDetails.Controls.Add(this.lblDetailModifiedOnCaption, 2, 1);
-            this.tlpComponentDetails.Controls.Add(this.lblDetailModifiedOnValue, 3, 1);
+            this.tlpComponentDetails.Controls.Add(this.txtDetailModifiedOnValue, 3, 1);
             this.tlpComponentDetails.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tlpComponentDetails.Location = new System.Drawing.Point(10, 58);
             this.tlpComponentDetails.Name = "tlpComponentDetails";
@@ -654,16 +662,17 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.lblDetailNameCaption.Text = "Name:";
             this.lblDetailNameCaption.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
-            // lblDetailNameValue
+            // txtDetailNameValue
             // 
-            this.lblDetailNameValue.AutoSize = true;
-            this.lblDetailNameValue.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.lblDetailNameValue.Location = new System.Drawing.Point(113, 0);
-            this.lblDetailNameValue.Name = "lblDetailNameValue";
-            this.lblDetailNameValue.Size = new System.Drawing.Size(131, 26);
-            this.lblDetailNameValue.TabIndex = 1;
-            this.lblDetailNameValue.Text = "—";
-            this.lblDetailNameValue.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.txtDetailNameValue.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+            this.txtDetailNameValue.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.txtDetailNameValue.Location = new System.Drawing.Point(113, 5);
+            this.txtDetailNameValue.Name = "txtDetailNameValue";
+            this.txtDetailNameValue.ReadOnly = true;
+            this.txtDetailNameValue.Size = new System.Drawing.Size(131, 16);
+            this.txtDetailNameValue.TabIndex = 1;
+            this.txtDetailNameValue.TabStop = false;
+            this.txtDetailNameValue.Text = "—";
             // 
             // lblDetailLogicalNameCaption
             // 
@@ -677,16 +686,17 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.lblDetailLogicalNameCaption.Text = "Logical Name:";
             this.lblDetailLogicalNameCaption.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
-            // lblDetailLogicalNameValue
+            // txtDetailLogicalNameValue
             // 
-            this.lblDetailLogicalNameValue.AutoSize = true;
-            this.lblDetailLogicalNameValue.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.lblDetailLogicalNameValue.Location = new System.Drawing.Point(360, 0);
-            this.lblDetailLogicalNameValue.Name = "lblDetailLogicalNameValue";
-            this.lblDetailLogicalNameValue.Size = new System.Drawing.Size(131, 26);
-            this.lblDetailLogicalNameValue.TabIndex = 3;
-            this.lblDetailLogicalNameValue.Text = "—";
-            this.lblDetailLogicalNameValue.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.txtDetailLogicalNameValue.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+            this.txtDetailLogicalNameValue.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.txtDetailLogicalNameValue.Location = new System.Drawing.Point(360, 5);
+            this.txtDetailLogicalNameValue.Name = "txtDetailLogicalNameValue";
+            this.txtDetailLogicalNameValue.ReadOnly = true;
+            this.txtDetailLogicalNameValue.Size = new System.Drawing.Size(131, 16);
+            this.txtDetailLogicalNameValue.TabIndex = 3;
+            this.txtDetailLogicalNameValue.TabStop = false;
+            this.txtDetailLogicalNameValue.Text = "—";
             // 
             // lblDetailCreatedOnCaption
             // 
@@ -700,16 +710,17 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.lblDetailCreatedOnCaption.Text = "Created On:";
             this.lblDetailCreatedOnCaption.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
-            // lblDetailCreatedOnValue
+            // txtDetailCreatedOnValue
             // 
-            this.lblDetailCreatedOnValue.AutoSize = true;
-            this.lblDetailCreatedOnValue.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.lblDetailCreatedOnValue.Location = new System.Drawing.Point(113, 26);
-            this.lblDetailCreatedOnValue.Name = "lblDetailCreatedOnValue";
-            this.lblDetailCreatedOnValue.Size = new System.Drawing.Size(131, 28);
-            this.lblDetailCreatedOnValue.TabIndex = 5;
-            this.lblDetailCreatedOnValue.Text = "—";
-            this.lblDetailCreatedOnValue.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.txtDetailCreatedOnValue.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+            this.txtDetailCreatedOnValue.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.txtDetailCreatedOnValue.Location = new System.Drawing.Point(113, 32);
+            this.txtDetailCreatedOnValue.Name = "txtDetailCreatedOnValue";
+            this.txtDetailCreatedOnValue.ReadOnly = true;
+            this.txtDetailCreatedOnValue.Size = new System.Drawing.Size(131, 16);
+            this.txtDetailCreatedOnValue.TabIndex = 5;
+            this.txtDetailCreatedOnValue.TabStop = false;
+            this.txtDetailCreatedOnValue.Text = "—";
             // 
             // lblDetailModifiedOnCaption
             // 
@@ -723,16 +734,17 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.lblDetailModifiedOnCaption.Text = "Modified On:";
             this.lblDetailModifiedOnCaption.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
-            // lblDetailModifiedOnValue
+            // txtDetailModifiedOnValue
             // 
-            this.lblDetailModifiedOnValue.AutoSize = true;
-            this.lblDetailModifiedOnValue.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.lblDetailModifiedOnValue.Location = new System.Drawing.Point(360, 26);
-            this.lblDetailModifiedOnValue.Name = "lblDetailModifiedOnValue";
-            this.lblDetailModifiedOnValue.Size = new System.Drawing.Size(131, 28);
-            this.lblDetailModifiedOnValue.TabIndex = 7;
-            this.lblDetailModifiedOnValue.Text = "—";
-            this.lblDetailModifiedOnValue.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.txtDetailModifiedOnValue.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+            this.txtDetailModifiedOnValue.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.txtDetailModifiedOnValue.Location = new System.Drawing.Point(360, 32);
+            this.txtDetailModifiedOnValue.Name = "txtDetailModifiedOnValue";
+            this.txtDetailModifiedOnValue.ReadOnly = true;
+            this.txtDetailModifiedOnValue.Size = new System.Drawing.Size(131, 16);
+            this.txtDetailModifiedOnValue.TabIndex = 7;
+            this.txtDetailModifiedOnValue.TabStop = false;
+            this.txtDetailModifiedOnValue.Text = "—";
             // 
             // pnlComponentDetailsActions
             // 
@@ -977,6 +989,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             // grpSearchResults
             // 
             this.grpSearchResults.Controls.Add(this.dgvResults);
+            this.grpSearchResults.Controls.Add(this.pnlResultsSearch);
             this.grpSearchResults.Controls.Add(this.pnlSearchStatus);
             this.grpSearchResults.Dock = System.Windows.Forms.DockStyle.Fill;
             this.grpSearchResults.Location = new System.Drawing.Point(0, 171);
@@ -991,7 +1004,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             // 
             this.dgvResults.AllowUserToAddRows = false;
             this.dgvResults.AllowUserToDeleteRows = false;
-            this.dgvResults.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
+            this.dgvResults.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.None;
             this.dgvResults.BackgroundColor = System.Drawing.SystemColors.Window;
             this.dgvResults.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.dgvResults.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.SingleHorizontal;
@@ -1015,15 +1028,15 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.dgvResults.Dock = System.Windows.Forms.DockStyle.Fill;
             this.dgvResults.EnableHeadersVisualStyles = false;
             this.dgvResults.GridColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(230)))));
-            this.dgvResults.Location = new System.Drawing.Point(8, 49);
+            this.dgvResults.Location = new System.Drawing.Point(8, 83);
             this.dgvResults.MultiSelect = false;
             this.dgvResults.Name = "dgvResults";
             this.dgvResults.ReadOnly = true;
             this.dgvResults.RowHeadersVisible = false;
             this.dgvResults.RowTemplate.Height = 24;
             this.dgvResults.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dgvResults.Size = new System.Drawing.Size(956, 318);
-            this.dgvResults.TabIndex = 1;
+            this.dgvResults.Size = new System.Drawing.Size(956, 284);
+            this.dgvResults.TabIndex = 2;
             // 
             // cmsResults
             // 
@@ -1061,6 +1074,37 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.pnlSearchStatus.Padding = new System.Windows.Forms.Padding(0, 4, 0, 6);
             this.pnlSearchStatus.Size = new System.Drawing.Size(956, 27);
             this.pnlSearchStatus.TabIndex = 0;
+            // 
+            // pnlResultsSearch
+            // 
+            this.pnlResultsSearch.Controls.Add(this.txtResultsSearch);
+            this.pnlResultsSearch.Controls.Add(this.lblResultsSearch);
+            this.pnlResultsSearch.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlResultsSearch.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.pnlResultsSearch.Location = new System.Drawing.Point(8, 49);
+            this.pnlResultsSearch.Name = "pnlResultsSearch";
+            this.pnlResultsSearch.Padding = new System.Windows.Forms.Padding(0, 0, 0, 8);
+            this.pnlResultsSearch.Size = new System.Drawing.Size(956, 34);
+            this.pnlResultsSearch.TabIndex = 1;
+            // 
+            // txtResultsSearch
+            // 
+            this.txtResultsSearch.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.txtResultsSearch.Location = new System.Drawing.Point(45, 0);
+            this.txtResultsSearch.Name = "txtResultsSearch";
+            this.txtResultsSearch.Size = new System.Drawing.Size(911, 23);
+            this.txtResultsSearch.TabIndex = 1;
+            // 
+            // lblResultsSearch
+            // 
+            this.lblResultsSearch.AutoSize = true;
+            this.lblResultsSearch.Dock = System.Windows.Forms.DockStyle.Left;
+            this.lblResultsSearch.Location = new System.Drawing.Point(0, 0);
+            this.lblResultsSearch.Name = "lblResultsSearch";
+            this.lblResultsSearch.Size = new System.Drawing.Size(45, 15);
+            this.lblResultsSearch.TabIndex = 0;
+            this.lblResultsSearch.Text = "Search:";
+            this.lblResultsSearch.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // lblSummary
             // 
@@ -1269,7 +1313,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             // 
             // pnlLog
             // 
-            this.pnlLog.Controls.Add(this.lstLog);
+            this.pnlLog.Controls.Add(this.txtLog);
             this.pnlLog.Controls.Add(this.lblLogHeader);
             this.pnlLog.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlLog.Location = new System.Drawing.Point(0, 0);
@@ -1278,17 +1322,20 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.pnlLog.Size = new System.Drawing.Size(1000, 130);
             this.pnlLog.TabIndex = 0;
             // 
-            // lstLog
+            // txtLog
             // 
-            this.lstLog.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.lstLog.Font = new System.Drawing.Font("Consolas", 8.25F);
-            this.lstLog.HorizontalScrollbar = true;
-            this.lstLog.IntegralHeight = false;
-            this.lstLog.Location = new System.Drawing.Point(12, 28);
-            this.lstLog.Name = "lstLog";
-            this.lstLog.SelectionMode = System.Windows.Forms.SelectionMode.MultiExtended;
-            this.lstLog.Size = new System.Drawing.Size(976, 94);
-            this.lstLog.TabIndex = 0;
+            this.txtLog.BackColor = System.Drawing.SystemColors.Window;
+            this.txtLog.DetectUrls = false;
+            this.txtLog.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.txtLog.Font = new System.Drawing.Font("Consolas", 8.25F);
+            this.txtLog.HideSelection = false;
+            this.txtLog.Location = new System.Drawing.Point(12, 28);
+            this.txtLog.Name = "txtLog";
+            this.txtLog.ReadOnly = true;
+            this.txtLog.Size = new System.Drawing.Size(976, 94);
+            this.txtLog.TabIndex = 0;
+            this.txtLog.Text = "";
+            this.txtLog.WordWrap = false;
             // 
             // lblLogHeader
             // 
@@ -1381,6 +1428,8 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock
             this.cmsResults.ResumeLayout(false);
             this.pnlSearchStatus.ResumeLayout(false);
             this.pnlSearchStatus.PerformLayout();
+            this.pnlResultsSearch.ResumeLayout(false);
+            this.pnlResultsSearch.PerformLayout();
             this.grpSearchCriteria.ResumeLayout(false);
             this.tlpSearchCriteria.ResumeLayout(false);
             this.tlpSearchCriteria.PerformLayout();

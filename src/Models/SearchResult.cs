@@ -23,5 +23,9 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock.Models
 
         public Guid ComponentObjectId { get; set; }
         public Guid SolutionId { get; set; }
+
+        /// <summary>The containing solution's createdon/modifiedon (from the cached solution list).</summary>
+        public DateTime? SolutionCreatedOn { get; set; }
+        public DateTime? SolutionModifiedOn { get; set; }
     }
 }

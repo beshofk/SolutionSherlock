@@ -14,5 +14,7 @@ namespace BeshoyFanous.XrmToolBox.SolutionSherlock.Models
 
         /// <summary>solution.modifiedon - the field "sort by date" sorts on.</summary>
         public DateTime? ModifiedOn { get; set; }
+
+        public DateTime? CreatedOn { get; set; }
     }
 }
